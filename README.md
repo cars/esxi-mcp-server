@@ -39,13 +39,25 @@ A VMware ESXi/vCenter management server based on MCP (Model Control Protocol), p
 
 ## Quick Start
 
-1. Install dependencies:
+### Installation
 
+You can install the package in one of two ways:
+
+**Option 1: Install from source (recommended for development)**:
+```bash
+git clone https://github.com/dylanturn/esxi-mcp-server.git
+cd esxi-mcp-server
+pip install -e .
+```
+
+**Option 2: Install dependencies only**:
 ```bash
 pip install pyvmomi pyyaml uvicorn mcp-core
 ```
 
-2. Create configuration file `config.yaml`:
+### Configuration
+
+1. Create configuration file `config.yaml`:
 
 ```yaml
 vcenter_host: "your-vcenter-ip"
@@ -61,17 +73,29 @@ log_file: "./logs/vmware_mcp.log"   # Log file path
 log_level: "INFO"                    # Log level
 ```
 
-3. Run the server:
+### Running the Server
 
 **HTTP Transport (default)**:
 ```bash
-python server.py -c config.yaml
-# Or explicitly:
+# If installed with pip:
+esxi-mcp-server -c config.yaml --transport http
+
+# Or using Python module:
+python -m esxi_mcp_server -c config.yaml --transport http
+
+# Or using the entry point script:
 python server.py -c config.yaml --transport http
 ```
 
 **stdio Transport** (for subprocess/pipe communication):
 ```bash
+# If installed with pip:
+esxi-mcp-server -c config.yaml --transport stdio
+
+# Or using Python module:
+python -m esxi_mcp_server -c config.yaml --transport stdio
+
+# Or using the entry point script:
 python server.py -c config.yaml --transport stdio
 ```
 
@@ -80,6 +104,25 @@ python server.py -c config.yaml --transport stdio
 When configuring this server in an MCP client (like Claude Desktop), use the following configuration format in your MCP settings file:
 
 **For stdio transport** (recommended):
+```json
+{
+  "mcpServers": {
+    "esxi": {
+      "command": "python",
+      "args": [
+        "-m",
+        "esxi_mcp_server",
+        "-c",
+        "/path/to/config.yaml",
+        "--transport",
+        "stdio"
+      ]
+    }
+  }
+}
+```
+
+**Alternatively, using the entry point script**:
 ```json
 {
   "mcpServers": {
@@ -218,6 +261,38 @@ GET vmstats://{vm_name}
 | log_file | Log file path | No | Console output |
 | log_level | Log level | No | INFO |
 
+## Project Structure
+
+The project follows the recommended Python package structure:
+
+```
+esxi-mcp-server/
+├── esxi_mcp_server/          # Main package directory
+│   ├── __init__.py           # Package initialization
+│   ├── __main__.py           # Entry point for python -m esxi_mcp_server
+│   ├── config.py             # Configuration management
+│   ├── vmware_manager.py     # VMware vSphere operations
+│   ├── tools.py              # MCP tool handlers
+│   ├── mcp_server.py         # MCP server setup and registration
+│   └── transport.py          # Transport layer (HTTP/stdio)
+├── server.py                 # Simple entry point script
+├── setup.py                  # Package installation configuration
+├── requirements.txt          # Python dependencies
+├── config.yaml.sample        # Sample configuration file
+├── README.md                 # Documentation
+├── Dockerfile                # Docker container configuration
+└── docker-compose.yml        # Docker Compose configuration
+```
+
+### Module Descriptions
+
+- **config.py**: Handles configuration loading from files (YAML/JSON) and environment variables
+- **vmware_manager.py**: Contains the `VMwareManager` class that interfaces with VMware vSphere using pyVmomi
+- **tools.py**: Implements the `ToolHandlers` class with all MCP tool handler methods
+- **mcp_server.py**: Sets up the MCP server and registers all tools and resources
+- **transport.py**: Manages transport layer including HTTP and stdio transports
+- **__main__.py**: Main entry point that ties everything together
+
 ## Environment Variables
 
 All configuration items support environment variable settings, following these naming rules:
@@ -254,6 +329,17 @@ MIT License
 Issues and Pull Requests are welcome!
 
 ## Changelog
+
+### v0.0.4
+- **BREAKING CHANGE**: Refactored project structure to follow Python best practices
+- Split monolithic `server.py` into modular package structure (`esxi_mcp_server/`)
+- Added proper package installation support with `setup.py`
+- Improved code organization and maintainability
+- Added lazy imports to reduce startup time
+- New ways to run the server:
+  - `esxi-mcp-server` (when installed with pip)
+  - `python -m esxi_mcp_server`
+  - `python server.py` (backward compatible)
 
 ### v0.0.3
 - Added stdio transport support for subprocess communication
