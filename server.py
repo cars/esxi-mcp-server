@@ -547,15 +547,20 @@ async def streamable_http_endpoint(scope, receive, send):
     provided_key = None
     # Check if authorization or x-api-key headers are present in the decoded headers_dict
     if "authorization" in headers_dict:
-        provided_key = headers_dict.get("authorization")
+        auth_header = headers_dict.get("authorization")
+        # Extract token from "Bearer <token>" format
+        if auth_header and auth_header.startswith("Bearer "):
+            provided_key = auth_header[7:]  # Remove "Bearer " prefix
+        else:
+            provided_key = auth_header
     elif "x-api-key" in headers_dict:
         provided_key = headers_dict.get("x-api-key")
     
-    if config.api_key and provided_key != f"Bearer {config.api_key}" and provided_key != config.api_key:
+    if config.api_key and provided_key != config.api_key:
         # If the correct API key is not provided, return 401
         await send({"type": "http.response.start", "status": 401, "headers": [(b"content-type", b"text/plain")]})
         await send({"type": "http.response.body", "body": b"Unauthorized"})
-        logging.warning("No valid API key provided, rejecting streamable-http connection")
+        logging.warning("Invalid API key provided, rejecting streamable-http connection")
         return
     
     # Create transport instance if it doesn't exist (with proper locking to avoid race conditions)
@@ -575,9 +580,13 @@ async def streamable_http_endpoint(scope, receive, send):
                 try:
                     async with streamable_http_transport.connect() as (read_stream, write_stream):
                         init_opts = mcp_server.create_initialization_options()
+                        logging.info("Starting MCP server with streamable-http transport")
                         await mcp_server.run(read_stream, write_stream, init_opts)
+                except asyncio.CancelledError:
+                    logging.info("MCP server task cancelled, shutting down gracefully")
+                    raise
                 except Exception as e:
-                    logging.error(f"StreamableHTTP MCP server encountered an error: {e}")
+                    logging.error(f"MCP server runtime error: {type(e).__name__}: {e}", exc_info=True)
             
             # Start the MCP server task and keep a reference to prevent garbage collection
             streamable_http_task = asyncio.create_task(run_mcp_server())
@@ -586,7 +595,7 @@ async def streamable_http_endpoint(scope, receive, send):
     try:
         await streamable_http_transport.handle_request(scope, receive, send)
     except Exception as e:
-        logging.error(f"Error handling streamable-http request: {e}")
+        logging.error(f"Error handling streamable-http request: {type(e).__name__}: {e}")
         # Only attempt to send error response if we haven't started sending a response yet
         # Note: ASGI spec requires checking state internally; we catch and log any errors
         try:
