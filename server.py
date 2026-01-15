@@ -549,10 +549,11 @@ async def sse_endpoint(scope, receive, send):
     headers = [(b"content-type", b"text/event-stream")]
     # Verify API key: Retrieve from request headers 'Authorization' or 'X-API-Key'
     headers_dict = {k.lower().decode(): v.decode() for (k, v) in scope.get("headers", [])}
+    header_keys = [h[0].lower() for h in scope.get("headers", [])]
     provided_key = None
-    if b"authorization" in scope["headers"]:
+    if b"authorization" in header_keys:
         provided_key = headers_dict.get("authorization")
-    elif b"x-api-key" in scope["headers"]:
+    elif b"x-api-key" in header_keys:
         provided_key = headers_dict.get("x-api-key")
     if config.api_key and provided_key != f"Bearer {config.api_key}" and provided_key != config.api_key:
         # If the correct API key is not provided, return 401
@@ -631,10 +632,11 @@ async def streamable_http_endpoint(scope, receive, send):
     
     # Verify API key if configured
     headers_dict = {k.lower().decode(): v.decode() for (k, v) in scope.get("headers", [])}
+    header_keys = [h[0].lower() for h in scope.get("headers", [])]
     provided_key = None
-    if b"authorization" in [h[0].lower() for h in scope.get("headers", [])]:
+    if b"authorization" in header_keys:
         provided_key = headers_dict.get("authorization")
-    elif b"x-api-key" in [h[0].lower() for h in scope.get("headers", [])]:
+    elif b"x-api-key" in header_keys:
         provided_key = headers_dict.get("x-api-key")
     
     if config.api_key and provided_key != f"Bearer {config.api_key}" and provided_key != config.api_key:
@@ -647,6 +649,9 @@ async def streamable_http_endpoint(scope, receive, send):
     # Create transport instance if it doesn't exist (with proper locking to avoid race conditions)
     async with streamable_http_lock:
         if streamable_http_transport is None:
+            # Initialize the StreamableHTTPServerTransport
+            # - mcp_session_id=None: No specific session ID, letting the transport manage session state
+            # - is_json_response_enabled=False: Use SSE streaming for responses (MCP standard)
             streamable_http_transport = StreamableHTTPServerTransport(
                 mcp_session_id=None,
                 is_json_response_enabled=False
