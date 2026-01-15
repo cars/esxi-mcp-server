@@ -1,5 +1,6 @@
 pyvmomi>=7.0
 pyyaml>=6.0
 uvicorn>=0.15.0
+anyio>=3.0.0
 mcp
 pytest>=7.0.0
