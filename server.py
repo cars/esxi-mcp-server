@@ -3,6 +3,7 @@ import json
 import logging
 import ssl
 import argparse
+import asyncio
 from dataclasses import dataclass
 from typing import Optional, Dict, Any
 
@@ -537,6 +538,8 @@ active_transport: Optional[SseServerTransport] = None
 
 # Maintain a global StreamableHTTP transport instance for the /message endpoint
 streamable_http_transport: Optional[StreamableHTTPServerTransport] = None
+streamable_http_task: Optional[asyncio.Task] = None
+streamable_http_lock = asyncio.Lock()
 
 # SSE initialization request handler (HTTP GET /sse)
 async def sse_endpoint(scope, receive, send):
@@ -624,7 +627,7 @@ async def messages_endpoint(scope, receive, send):
 # Streamable HTTP message handler (HTTP GET or POST /message)
 async def streamable_http_endpoint(scope, receive, send):
     """Handle streamable-http MCP requests."""
-    global streamable_http_transport
+    global streamable_http_transport, streamable_http_task
     
     # Verify API key if configured
     headers_dict = {k.lower().decode(): v.decode() for (k, v) in scope.get("headers", [])}
@@ -641,36 +644,41 @@ async def streamable_http_endpoint(scope, receive, send):
         logging.warning("No valid API key provided, rejecting streamable-http connection")
         return
     
-    # Create transport instance if it doesn't exist
-    if streamable_http_transport is None:
-        streamable_http_transport = StreamableHTTPServerTransport(
-            mcp_session_id=None,
-            is_json_response_enabled=False
-        )
-        logging.info("Created new StreamableHTTPServerTransport instance")
-        
-        # Start the MCP server with the transport in the background
-        async def run_mcp_server():
-            try:
-                async with streamable_http_transport.connect() as (read_stream, write_stream):
-                    init_opts = mcp_server.create_initialization_options()
-                    await mcp_server.run(read_stream, write_stream, init_opts)
-            except Exception as e:
-                logging.error(f"StreamableHTTP MCP server encountered an error: {e}")
-        
-        # Start the MCP server task (it will run in the background)
-        import asyncio
-        asyncio.create_task(run_mcp_server())
+    # Create transport instance if it doesn't exist (with proper locking to avoid race conditions)
+    async with streamable_http_lock:
+        if streamable_http_transport is None:
+            streamable_http_transport = StreamableHTTPServerTransport(
+                mcp_session_id=None,
+                is_json_response_enabled=False
+            )
+            logging.info("Created new StreamableHTTPServerTransport instance")
+            
+            # Start the MCP server with the transport in the background
+            async def run_mcp_server():
+                try:
+                    async with streamable_http_transport.connect() as (read_stream, write_stream):
+                        init_opts = mcp_server.create_initialization_options()
+                        await mcp_server.run(read_stream, write_stream, init_opts)
+                except Exception as e:
+                    logging.error(f"StreamableHTTP MCP server encountered an error: {e}")
+            
+            # Start the MCP server task and keep a reference to prevent garbage collection
+            streamable_http_task = asyncio.create_task(run_mcp_server())
     
     # Handle the request through the StreamableHTTPServerTransport
     try:
         await streamable_http_transport.handle_request(scope, receive, send)
     except Exception as e:
         logging.error(f"Error handling streamable-http request: {e}")
-        if not scope.get("_response_started"):
+        # Only attempt to send error response if we haven't started sending a response yet
+        # Note: ASGI spec requires checking state internally; we catch and log any errors
+        try:
             await send({"type": "http.response.start", "status": 500,
                         "headers": [(b"content-type", b"text/plain")]})
             await send({"type": "http.response.body", "body": str(e).encode('utf-8')})
+        except Exception:
+            # Response already started, can't send error response
+            pass
 
 # Simple ASGI application routing: dispatch requests to the appropriate handler based on the path and method
 async def app(scope, receive, send):
