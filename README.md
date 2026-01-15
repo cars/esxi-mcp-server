@@ -5,7 +5,9 @@ A VMware ESXi/vCenter management server based on MCP (Model Control Protocol), p
 ## Features
 
 - Support for ESXi and vCenter Server connections
-- Real-time communication based on SSE (Server-Sent Events)
+- Multiple MCP transport protocols:
+  - **Streamable HTTP** - HTTP-based transport at `/message` endpoint (default)
+  - **stdio** - Standard input/output transport for subprocess communication
 - RESTful API interface with JSON-RPC support
 - API key authentication
 - Complete virtual machine lifecycle management
@@ -61,19 +63,101 @@ log_level: "INFO"                    # Log level
 
 3. Run the server:
 
+**HTTP Transport (default)**:
 ```bash
 python server.py -c config.yaml
+# Or explicitly:
+python server.py -c config.yaml --transport http
+```
+
+**stdio Transport** (for subprocess/pipe communication):
+```bash
+python server.py -c config.yaml --transport stdio
+```
+
+### MCP Client Configuration
+
+When configuring this server in an MCP client (like Claude Desktop), use the following configuration format in your MCP settings file:
+
+**For stdio transport** (recommended):
+```json
+{
+  "mcpServers": {
+    "esxi": {
+      "command": "python",
+      "args": [
+        "/path/to/esxi-mcp-server/server.py",
+        "-c",
+        "/path/to/config.yaml",
+        "--transport",
+        "stdio"
+      ]
+    }
+  }
+}
+```
+
+**Important**: Each command-line argument must be a separate string in the `args` array. Do not combine arguments like `"-c config.yaml"` or `"--transport stdio"` as single strings.
+
+**Using uv**:
+```json
+{
+  "mcpServers": {
+    "esxi": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "/path/to/esxi-mcp-server",
+        "server.py",
+        "-c",
+        "config.yaml",
+        "--transport",
+        "stdio"
+      ]
+    }
+  }
+}
 ```
 
 ## API Interface
 
+### Transport Protocols
+
+The server supports two MCP transport protocols:
+
+1. **Streamable HTTP** (default) - HTTP-based transport
+   - Endpoint: `/message`
+   - Methods: `GET` (streaming responses), `POST` (requests)
+   - Requires API key authentication
+   - Accessible over network at `http://host:8080/message`
+
+2. **stdio** - Standard input/output transport
+   - Communicates via stdin/stdout
+   - Used when running as a subprocess
+   - No network required
+   - Authentication handled by parent process
+
+### Streamable HTTP Transport
+
+When using HTTP transport, the server listens on port 8080:
+
+- **Endpoint**: `/message`
+- **Methods**: `GET` (for streaming responses), `POST` (for requests)
+- Modern HTTP-based transport protocol with full MCP specification compliance
+
 ### Authentication
 
-All privileged operations require authentication first:
+All privileged operations require authentication. Include your API key in request headers:
 
 ```http
-POST /sse/messages
 Authorization: Bearer your-api-key
+```
+
+Or:
+
+```http
+X-API-Key: your-api-key
 ```
 
 ### Main Tool Interfaces
@@ -170,6 +254,17 @@ MIT License
 Issues and Pull Requests are welcome!
 
 ## Changelog
+
+### v0.0.3
+- Added stdio transport support for subprocess communication
+- Added `--transport` CLI flag to choose between HTTP and stdio modes
+- Enhanced flexibility for different deployment scenarios
+
+### v0.0.2
+- **BREAKING CHANGE**: Replaced deprecated SSE transport with modern Streamable HTTP transport
+- MCP endpoint now at `/message` instead of `/sse` and `/sse/messages`
+- Enhanced MCP protocol compliance with HTTP-based transport
+- Improved concurrency handling and error management
 
 ### v0.0.1
 - Initial release

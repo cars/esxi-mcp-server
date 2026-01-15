@@ -3,12 +3,14 @@ import json
 import logging
 import ssl
 import argparse
+import asyncio
 from dataclasses import dataclass
 from typing import Optional, Dict, Any
 
 # MCP protocol related imports
 from mcp.server.lowlevel import Server  # MCP server base class
-from mcp.server.sse import SseServerTransport  # SSE transport support
+from mcp.server.streamable_http import StreamableHTTPServerTransport  # Streamable HTTP transport support
+from mcp.server import stdio  # stdio transport support
 from mcp import types  # MCP type definitions
 
 # pyVmomi VMware API imports
@@ -420,29 +422,40 @@ def _check_auth():
         if not manager.authenticated:
             raise Exception("Unauthorized: API key required.")
 
+# Tool 8: Ping (test tool that doesn't require VMware)
+def tool_ping(message: str = "pong") -> str:
+    """A simple test tool that echoes back a message."""
+    return f"Ping response: {message}"
+
 # Register the above functions as tools and resources for the MCP Server
-# Encapsulate using mcp.types.Tool and mcp.types.Resource
+# Define tools with proper MCP Tool schema (name, description, inputSchema only)
 tools = {
+    "ping": types.Tool(
+        name="ping",
+        description="A simple test tool that echoes back a message. Use this to verify MCP connectivity.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "message": {"type": "string", "description": "Message to echo back", "default": "pong"}
+            }
+        }
+    ),
     "authenticate": types.Tool(
         name="authenticate",
         description="Authenticate using API key to enable privileged operations",
-        parameters={"key": str},
-        handler=lambda params: tool_authenticate(**params),
         inputSchema={"type": "object", "properties": {"key": {"type": "string"}}, "required": ["key"]}
     ),
     "createVM": types.Tool(
         name="createVM",
         description="Create a new virtual machine",
-        parameters={"name": str, "cpu": int, "memory": int, "datastore": Optional[str], "network": Optional[str]},
-        handler=lambda params: tool_create_vm(**params),
         inputSchema={
             "type": "object",
             "properties": {
                 "name": {"type": "string"},
                 "cpu": {"type": "integer"},
                 "memory": {"type": "integer"},
-                "datastore": {"type": "string", "nullable": True},
-                "network": {"type": "string", "nullable": True}
+                "datastore": {"type": "string"},
+                "network": {"type": "string"}
             },
             "required": ["name", "cpu", "memory"]
         }
@@ -450,8 +463,6 @@ tools = {
     "cloneVM": types.Tool(
         name="cloneVM",
         description="Clone a virtual machine from a template or existing VM",
-        parameters={"template_name": str, "new_name": str},
-        handler=lambda params: tool_clone_vm(**params),
         inputSchema={
             "type": "object",
             "properties": {
@@ -464,8 +475,6 @@ tools = {
     "deleteVM": types.Tool(
         name="deleteVM",
         description="Delete a virtual machine",
-        parameters={"name": str},
-        handler=lambda params: tool_delete_vm(**params),
         inputSchema={
             "type": "object",
             "properties": {"name": {"type": "string"}},
@@ -475,8 +484,6 @@ tools = {
     "powerOn": types.Tool(
         name="powerOn",
         description="Power on a virtual machine",
-        parameters={"name": str},
-        handler=lambda params: tool_power_on(**params),
         inputSchema={
             "type": "object",
             "properties": {"name": {"type": "string"}},
@@ -486,8 +493,6 @@ tools = {
     "powerOff": types.Tool(
         name="powerOff",
         description="Power off a virtual machine",
-        parameters={"name": str},
-        handler=lambda params: tool_power_off(**params),
         inputSchema={
             "type": "object",
             "properties": {"name": {"type": "string"}},
@@ -497,147 +502,175 @@ tools = {
     "listVMs": types.Tool(
         name="listVMs",
         description="List all virtual machines",
-        parameters={},
-        handler=lambda params: tool_list_vms(),
         inputSchema={"type": "object", "properties": {}}
     )
 }
+
+# Map tool names to their handler functions
+tool_handlers = {
+    "ping": lambda args: tool_ping(**args),
+    "authenticate": lambda args: tool_authenticate(**args),
+    "createVM": lambda args: tool_create_vm(**args),
+    "cloneVM": lambda args: tool_clone_vm(**args),
+    "deleteVM": lambda args: tool_delete_vm(**args),
+    "powerOn": lambda args: tool_power_on(**args),
+    "powerOff": lambda args: tool_power_off(**args),
+    "listVMs": lambda args: tool_list_vms()
+}
+
 resources = {
     "vmStats": types.Resource(
         name="vmStats",
         uri="vmstats://{vm_name}",
         description="Get CPU, memory, storage, network usage of a VM",
-        parameters={"vm_name": str},
-        handler=lambda params: resource_vm_performance(**params),
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "vm_name": {"type": "string"}
-            },
-            "required": ["vm_name"]
-        }
+        mimeType="application/json"
     )
 }
 
-# Add tools and resources to the MCP Server object
-for name, tool in tools.items():
-    setattr(mcp_server, f"tool_{name}", tool)
-for name, res in resources.items():
-    setattr(mcp_server, f"resource_{name}", res)
+# Register tool handlers using decorators
+@mcp_server.list_tools()
+async def list_tools_handler():
+    """List all available tools."""
+    return list(tools.values())
 
-# Set the MCP Server capabilities, declaring that the tools and resources list is available
-mcp_server.capabilities = {
-    "tools": {"listChanged": True},
-    "resources": {"listChanged": True}
-}
+@mcp_server.call_tool()
+async def call_tool_handler(name: str, arguments: dict):
+    """Handle tool calls."""
+    if name not in tool_handlers:
+        raise ValueError(f"Unknown tool: {name}")
+    
+    # Call the handler function
+    handler = tool_handlers[name]
+    result = handler(arguments)
+    
+    # Return result as text content
+    import json
+    if isinstance(result, (dict, list)):
+        text = json.dumps(result, indent=2)
+    else:
+        text = str(result)
+    
+    return [types.TextContent(type="text", text=text)]
 
-# Maintain a global SSE transport instance for sending events during POST request processing
-active_transport: Optional[SseServerTransport] = None
+# Register resource handlers
+@mcp_server.list_resources()
+async def list_resources_handler():
+    """List all available resources."""
+    return list(resources.values())
 
-# SSE initialization request handler (HTTP GET /sse)
-async def sse_endpoint(scope, receive, send):
-    """Handle SSE connection initialization requests. Establish an MCP SSE session."""
-    global active_transport
-    # Construct response headers to establish an event stream
-    headers = [(b"content-type", b"text/event-stream")]
-    # Verify API key: Retrieve from request headers 'Authorization' or 'X-API-Key'
+@mcp_server.read_resource()
+async def read_resource_handler(uri: str):
+    """Handle resource reads."""
+    # Parse URI to extract resource name and parameters
+    for resource_name, resource in resources.items():
+        if uri.startswith(resource.uri.split("{")[0]):
+            # Extract parameters from URI
+            # For vmstats://{vm_name}, extract vm_name
+            if resource_name == "vmStats":
+                vm_name = uri.replace("vmstats://", "")
+                result = resource_vm_performance(vm_name)
+                # Return resource content
+                import json
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps(result, indent=2)
+                )]
+    
+    raise ValueError(f"Unknown resource: {uri}")
+
+# Maintain a global StreamableHTTP transport instance
+streamable_http_transport: Optional[StreamableHTTPServerTransport] = None
+streamable_http_task: Optional[asyncio.Task] = None
+streamable_http_lock = asyncio.Lock()
+
+# Streamable HTTP message handler (HTTP GET or POST /message)
+async def streamable_http_endpoint(scope, receive, send):
+    """Handle streamable-http MCP requests."""
+    global streamable_http_transport, streamable_http_task
+    
+    # Verify API key if configured
     headers_dict = {k.lower().decode(): v.decode() for (k, v) in scope.get("headers", [])}
     provided_key = None
-    if b"authorization" in scope["headers"]:
-        provided_key = headers_dict.get("authorization")
-    elif b"x-api-key" in scope["headers"]:
-        provided_key = headers_dict.get("x-api-key")
-    if config.api_key and provided_key != f"Bearer {config.api_key}" and provided_key != config.api_key:
+    # Check if authorization or x-api-key headers are present in the decoded headers_dict
+    if "authorization" in headers_dict:
+        auth_header = headers_dict.get("authorization", "").strip()
+        # Extract token from "Bearer <token>" format (standard) or use direct token (fallback)
+        if auth_header.startswith("Bearer "):
+            provided_key = auth_header[7:].strip()  # Remove "Bearer " prefix and any extra whitespace
+        elif auth_header:
+            # Support direct token in Authorization header for backward compatibility
+            provided_key = auth_header
+    elif "x-api-key" in headers_dict:
+        provided_key = headers_dict.get("x-api-key", "").strip()
+    
+    if config.api_key and provided_key != config.api_key:
         # If the correct API key is not provided, return 401
-        res_status = b"401 UNAUTHORIZED"
         await send({"type": "http.response.start", "status": 401, "headers": [(b"content-type", b"text/plain")]})
         await send({"type": "http.response.body", "body": b"Unauthorized"})
-        logging.warning("No valid API key provided, rejecting SSE connection")
+        logging.warning("Invalid API key provided, rejecting streamable-http connection")
         return
-
-    # Establish SSE transport and connect to the MCP Server
-    active_transport = SseServerTransport("/sse/messages")
-    logging.info("Established new SSE session")
-    # Send SSE response headers to the client, preparing to start sending events
-    await send({"type": "http.response.start", "status": 200, "headers": headers})
+    
+    # Create transport instance if it doesn't exist (with proper locking to avoid race conditions)
+    async with streamable_http_lock:
+        if streamable_http_transport is None:
+            # Initialize the StreamableHTTPServerTransport
+            # - mcp_session_id=None: No specific session ID, letting the transport manage session state
+            # - is_json_response_enabled=False: Use SSE streaming for responses (MCP standard)
+            streamable_http_transport = StreamableHTTPServerTransport(
+                mcp_session_id=None,
+                is_json_response_enabled=False
+            )
+            logging.info("Created new StreamableHTTPServerTransport instance")
+            
+            # Start the MCP server with the transport in the background
+            async def run_mcp_server():
+                try:
+                    async with streamable_http_transport.connect() as (read_stream, write_stream):
+                        init_opts = mcp_server.create_initialization_options()
+                        logging.info("Starting MCP server with streamable-http transport")
+                        await mcp_server.run(read_stream, write_stream, init_opts)
+                except asyncio.CancelledError:
+                    logging.info("MCP server task cancelled, shutting down gracefully")
+                    raise
+                except Exception as e:
+                    logging.error(f"MCP server runtime error: {type(e).__name__}: {e}", exc_info=True)
+            
+            # Start the MCP server task and keep a reference to prevent garbage collection
+            streamable_http_task = asyncio.create_task(run_mcp_server())
+    
+    # Handle the request through the StreamableHTTPServerTransport
     try:
-        async with active_transport.connect_sse(scope, receive, send) as (read_stream, write_stream):
-            init_opts = mcp_server.create_initialization_options()
-            # Run MCP Server, passing the read/write streams to the Server
-            await mcp_server.run(read_stream, write_stream, init_opts)
+        await streamable_http_transport.handle_request(scope, receive, send)
     except Exception as e:
-        logging.error(f"SSE session encountered an error: {e}")
-    finally:
-        active_transport = None
-    # SSE session ended, send an empty message to indicate completion
-    await send({"type": "http.response.body", "body": b"", "more_body": False})
-
-# JSON-RPC message handler (HTTP POST /sse/messages)
-async def messages_endpoint(scope, receive, send):
-    """Handle JSON-RPC requests sent by the client (via POST)."""
-    global active_transport
-    # Read request body data
-    body_bytes = b''
-    more_body = True
-    while more_body:
-        event = await receive()
-        if event["type"] == "http.request":
-            body_bytes += event.get("body", b'')
-            more_body = event.get("more_body", False)
-    # Parse JSON-RPC request
-    try:
-        body_str = body_bytes.decode('utf-8')
-        msg = json.loads(body_str)
-    except Exception as e:
-        logging.error(f"JSON parsing failed: {e}")
-        await send({"type": "http.response.start", "status": 400,
-                    "headers": [(b"content-type", b"text/plain")]})
-        await send({"type": "http.response.body", "body": b"Invalid JSON"})
-        return
-
-    # Only accept requests sent through an established SSE transport
-    if not active_transport:
-        await send({"type": "http.response.start", "status": 400,
-                    "headers": [(b"content-type", b"text/plain")]})
-        await send({"type": "http.response.body", "body": b"No active session"})
-        return
-
-    # Pass the POST request content to active_transport to trigger the corresponding MCP Server operation
-    try:
-        # Handle the POST message through SseServerTransport, which injects the request into the MCP session
-        await active_transport.handle_post(scope, body_bytes)
-        status = 200
-        response_body = b""
-    except Exception as e:
-        logging.error(f"Error handling POST message: {e}")
-        status = 500
-        response_body = str(e).encode('utf-8')
-    # Reply to the client with HTTP status
-    await send({"type": "http.response.start", "status": status,
-                "headers": [(b"content-type", b"text/plain")]})
-    await send({"type": "http.response.body", "body": response_body})
+        logging.error(f"Error handling streamable-http request: {type(e).__name__}: {e}")
+        # Only attempt to send error response if we haven't started sending a response yet
+        # Note: ASGI spec requires checking state internally; we catch and log any errors
+        try:
+            await send({"type": "http.response.start", "status": 500,
+                        "headers": [(b"content-type", b"text/plain")]})
+            await send({"type": "http.response.body", "body": str(e).encode('utf-8')})
+        except Exception:
+            # Response already started, can't send error response
+            pass
 
 # Simple ASGI application routing: dispatch requests to the appropriate handler based on the path and method
 async def app(scope, receive, send):
     if scope["type"] == "http":
         path = scope.get("path", "")
         method = scope.get("method", "").upper()
-        if path == "/sse" and method == "GET":
-            # SSE initialization request
-            await sse_endpoint(scope, receive, send)
-        elif path == "/sse/messages" and method in ("POST", "OPTIONS"):
-            # JSON-RPC message request; handle CORS preflight OPTIONS request
+        if path == "/message" and method in ("GET", "POST", "OPTIONS"):
+            # Streamable HTTP endpoint for MCP
             if method == "OPTIONS":
-                # Return allowed methods
+                # Return allowed methods for CORS
                 headers = [
-                    (b"access-control-allow-methods", b"POST, OPTIONS"),
-                    (b"access-control-allow-headers", b"Content-Type, Authorization, X-API-Key"),
+                    (b"access-control-allow-methods", b"GET, POST, OPTIONS"),
+                    (b"access-control-allow-headers", b"Content-Type, Authorization, X-API-Key, MCP-Session-Id"),
                     (b"access-control-allow-origin", b"*")
                 ]
                 await send({"type": "http.response.start", "status": 204, "headers": headers})
                 await send({"type": "http.response.body", "body": b""})
             else:
-                await messages_endpoint(scope, receive, send)
+                await streamable_http_endpoint(scope, receive, send)
         else:
             # Route not found
             await send({"type": "http.response.start", "status": 404,
@@ -650,6 +683,8 @@ async def app(scope, receive, send):
 # Parse command-line arguments and environment variables, and load configuration
 parser = argparse.ArgumentParser(description="MCP VMware ESXi Management Server")
 parser.add_argument("--config", "-c", help="Configuration file path (JSON or YAML)", default=None)
+parser.add_argument("--transport", "-t", choices=["stdio", "http"], default="http",
+                    help="Transport mode: 'stdio' for stdin/stdout communication (default: http)")
 args = parser.parse_args()
 
 # Attempt to load configuration from a file or environment variables
@@ -713,8 +748,21 @@ manager = VMwareManager(config)
 if config.api_key:
     logging.info("API key authentication is enabled. Clients must call the authenticate tool to verify the key before invoking sensitive operations")
 
-# Start ASGI server to listen for MCP SSE connections
+# Start MCP server with the selected transport
 if __name__ == "__main__":
-    # Start ASGI application using the built-in uvicorn server (listening on 0.0.0.0:8080)
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8080)
+    if args.transport == "stdio":
+        # Run with stdio transport (stdin/stdout communication)
+        logging.info("Starting MCP server with stdio transport")
+        import anyio
+        
+        async def run_stdio():
+            async with stdio.stdio_server() as (read_stream, write_stream):
+                init_opts = mcp_server.create_initialization_options()
+                await mcp_server.run(read_stream, write_stream, init_opts)
+        
+        anyio.run(run_stdio)
+    else:
+        # Run with HTTP transport (default)
+        logging.info("Starting MCP server with HTTP transport on 0.0.0.0:8080")
+        import uvicorn
+        uvicorn.run(app, host="0.0.0.0", port=8080)
