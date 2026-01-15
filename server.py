@@ -689,6 +689,164 @@ class VMwareManager:
         logging.info(f"Virtual machine powered off: {name}")
         return f"VM '{name}' powered off."
 
+    def list_datastore_clusters(self) -> list:
+        """List all datastore clusters (StoragePods)."""
+        clusters = []
+        container = self.content.viewManager.CreateContainerView(
+            self.content.rootFolder, [vim.StoragePod], True)
+        for pod in container.view:
+            cluster_info = {
+                "name": pod.name,
+                "capacity_gb": round(pod.summary.capacity / (1024**3), 2) if pod.summary else 0,
+                "free_space_gb": round(pod.summary.freeSpace / (1024**3), 2) if pod.summary else 0,
+                "datastores": [ds.name for ds in pod.childEntity if isinstance(ds, vim.Datastore)]
+            }
+            clusters.append(cluster_info)
+        container.Destroy()
+        return clusters
+
+    def wait_for_task(self, task: vim.Task, timeout: int = 300) -> Dict[str, Any]:
+        """Wait for a vCenter task to complete or timeout."""
+        import time
+        start_time = time.time()
+        while task.info.state not in [vim.TaskInfo.State.success, vim.TaskInfo.State.error]:
+            if time.time() - start_time > timeout:
+                return {
+                    "status": "timeout",
+                    "message": f"Task timed out after {timeout} seconds",
+                    "task_state": str(task.info.state)
+                }
+            time.sleep(1)
+        
+        if task.info.state == vim.TaskInfo.State.success:
+            return {
+                "status": "success",
+                "message": "Task completed successfully",
+                "result": str(task.info.result) if task.info.result else None
+            }
+        else:
+            return {
+                "status": "error",
+                "message": str(task.info.error) if task.info.error else "Unknown error",
+                "error": str(task.info.error) if task.info.error else None
+            }
+
+    def create_snapshot(self, vm_name: str, snapshot_name: str, description: str = "", 
+                       memory: bool = False, quiesce: bool = False) -> str:
+        """Create a snapshot of a virtual machine."""
+        vm = self.find_vm(vm_name)
+        if not vm:
+            raise Exception(f"VM {vm_name} not found")
+        
+        task = vm.CreateSnapshot(snapshot_name, description, memory, quiesce)
+        while task.info.state not in [vim.TaskInfo.State.success, vim.TaskInfo.State.error]:
+            continue
+        if task.info.state == vim.TaskInfo.State.error:
+            raise task.info.error
+        
+        logging.info(f"Snapshot '{snapshot_name}' created for VM '{vm_name}'")
+        return f"Snapshot '{snapshot_name}' created successfully for VM '{vm_name}'"
+
+    def remove_snapshot(self, vm_name: str, snapshot_name: str, remove_children: bool = True) -> str:
+        """Remove a snapshot from a virtual machine."""
+        vm = self.find_vm(vm_name)
+        if not vm:
+            raise Exception(f"VM {vm_name} not found")
+        
+        if not vm.snapshot:
+            raise Exception(f"VM {vm_name} has no snapshots")
+        
+        snapshot = self._find_snapshot_by_name(vm.snapshot.rootSnapshotList, snapshot_name)
+        if not snapshot:
+            raise Exception(f"Snapshot '{snapshot_name}' not found on VM '{vm_name}'")
+        
+        task = snapshot.snapshot.RemoveSnapshot_Task(remove_children)
+        while task.info.state not in [vim.TaskInfo.State.success, vim.TaskInfo.State.error]:
+            continue
+        if task.info.state == vim.TaskInfo.State.error:
+            raise task.info.error
+        
+        logging.info(f"Snapshot '{snapshot_name}' removed from VM '{vm_name}'")
+        return f"Snapshot '{snapshot_name}' removed successfully from VM '{vm_name}'"
+
+    def revert_snapshot(self, vm_name: str, snapshot_name: str) -> str:
+        """Revert a virtual machine to a specific snapshot."""
+        vm = self.find_vm(vm_name)
+        if not vm:
+            raise Exception(f"VM {vm_name} not found")
+        
+        if not vm.snapshot:
+            raise Exception(f"VM {vm_name} has no snapshots")
+        
+        snapshot = self._find_snapshot_by_name(vm.snapshot.rootSnapshotList, snapshot_name)
+        if not snapshot:
+            raise Exception(f"Snapshot '{snapshot_name}' not found on VM '{vm_name}'")
+        
+        task = snapshot.snapshot.RevertToSnapshot_Task()
+        while task.info.state not in [vim.TaskInfo.State.success, vim.TaskInfo.State.error]:
+            continue
+        if task.info.state == vim.TaskInfo.State.error:
+            raise task.info.error
+        
+        logging.info(f"VM '{vm_name}' reverted to snapshot '{snapshot_name}'")
+        return f"VM '{vm_name}' reverted successfully to snapshot '{snapshot_name}'"
+
+    def list_snapshots(self, vm_name: str) -> list:
+        """List all snapshots for a virtual machine."""
+        vm = self.find_vm(vm_name)
+        if not vm:
+            raise Exception(f"VM {vm_name} not found")
+        
+        if not vm.snapshot:
+            return []
+        
+        snapshots = []
+        self._collect_snapshots(vm.snapshot.rootSnapshotList, snapshots)
+        return snapshots
+
+    def remove_all_snapshots(self, vm_name: str) -> str:
+        """Remove all snapshots from a virtual machine."""
+        vm = self.find_vm(vm_name)
+        if not vm:
+            raise Exception(f"VM {vm_name} not found")
+        
+        if not vm.snapshot:
+            return f"VM '{vm_name}' has no snapshots to remove"
+        
+        task = vm.RemoveAllSnapshots()
+        while task.info.state not in [vim.TaskInfo.State.success, vim.TaskInfo.State.error]:
+            continue
+        if task.info.state == vim.TaskInfo.State.error:
+            raise task.info.error
+        
+        logging.info(f"All snapshots removed from VM '{vm_name}'")
+        return f"All snapshots removed successfully from VM '{vm_name}'"
+
+    def _find_snapshot_by_name(self, snapshots, name: str):
+        """Recursively find a snapshot by name."""
+        for snapshot in snapshots:
+            if snapshot.name == name:
+                return snapshot
+            if snapshot.childSnapshotList:
+                result = self._find_snapshot_by_name(snapshot.childSnapshotList, name)
+                if result:
+                    return result
+        return None
+
+    def _collect_snapshots(self, snapshots, result: list, level: int = 0):
+        """Recursively collect snapshot information."""
+        for snapshot in snapshots:
+            snap_info = {
+                "name": snapshot.name,
+                "description": snapshot.description,
+                "create_time": str(snapshot.createTime),
+                "state": str(snapshot.state),
+                "level": level
+            }
+            result.append(snap_info)
+            if snapshot.childSnapshotList:
+                self._collect_snapshots(snapshot.childSnapshotList, result, level + 1)
+
 # ---------------- MCP Server Definition ----------------
 
 # Initialize MCP Server object
@@ -698,48 +856,37 @@ mcp_server = Server(name="VMware-MCP-Server", version="0.0.1")
 # Note: For each operation, perform API key authentication check, and only execute sensitive operations if the authenticated flag is True
 # If not authenticated, an exception is raised
 
-# Tool 1: Authentication (via API Key)
-def tool_authenticate(key: str) -> str:
-    """Validate the API key and enable subsequent operations upon success."""
-    if config.api_key and key == config.api_key:
-        manager.authenticated = True
-        logging.info("API key verification successful, client is authorized")
-        return "Authentication successful."
-    else:
-        logging.warning("API key verification failed")
-        raise Exception("Authentication failed: invalid API key.")
-
-# Tool 2: Create virtual machine
+# Tool 1: Create virtual machine
 def tool_create_vm(name: str, cpu: int, memory: int, datastore: str = None, network: str = None) -> str:
     """Create a new virtual machine."""
     _check_auth()  # Check access permissions
     return manager.create_vm(name, cpu, memory, datastore, network)
 
-# Tool 3: Clone virtual machine
+# Tool 2: Clone virtual machine
 def tool_clone_vm(template_name: str, new_name: str) -> str:
     """Clone a virtual machine from a template."""
     _check_auth()
     return manager.clone_vm(template_name, new_name)
 
-# Tool 4: Delete virtual machine
+# Tool 3: Delete virtual machine
 def tool_delete_vm(name: str) -> str:
     """Delete the specified virtual machine."""
     _check_auth()
     return manager.delete_vm(name)
 
-# Tool 5: Power on virtual machine
-def tool_power_on(name: str) -> str:
+# Tool 4: Power on virtual machine
+def tool_power_on_vm(name: str) -> str:
     """Power on the specified virtual machine."""
     _check_auth()
     return manager.power_on_vm(name)
 
-# Tool 6: Power off virtual machine
-def tool_power_off(name: str) -> str:
+# Tool 5: Power off virtual machine
+def tool_power_off_vm(name: str) -> str:
     """Power off the specified virtual machine."""
     _check_auth()
     return manager.power_off_vm(name)
 
-# Tool 7: List all virtual machines
+# Tool 6: List all virtual machines
 def tool_list_vms() -> list:
     """Return a list of all virtual machine names."""
     _check_auth()
@@ -758,12 +905,7 @@ def _check_auth():
         if not manager.authenticated:
             raise Exception("Unauthorized: API key required.")
 
-# Tool 8: Ping (test tool that doesn't require VMware)
-def tool_ping(message: str = "pong") -> str:
-    """A simple test tool that echoes back a message."""
-    return f"Ping response: {message}"
-
-# Tool 9: Get VM details
+# Tool 7: Get VM details
 def tool_get_vm_details(vm_name: str) -> dict:
     """Get detailed information about a virtual machine."""
     _check_auth()
@@ -845,82 +987,110 @@ def tool_create_vm_custom(name: str, cpu: int, memory: int, disk_size_gb: int = 
     return manager.create_vm_custom(name, cpu, memory, disk_size_gb, guest_id,
                                    datastore, network, thin_provisioned, annotation)
 
+# Tool 22: List datastore clusters
+def tool_list_datastore_clusters() -> list:
+    """List all datastore clusters (StoragePods)."""
+    _check_auth()
+    return manager.list_datastore_clusters()
+
+# Tool 23: Wait for task
+def tool_wait_for_task(task_id: str, timeout: int = 300) -> dict:
+    """Wait for a vCenter task to complete or timeout.
+    Note: This is a placeholder as task tracking requires maintaining task state.
+    """
+    _check_auth()
+    return {
+        "status": "not_implemented",
+        "message": "Task waiting requires maintaining task state across calls. Use snapshot/clone operations which handle task waiting internally."
+    }
+
+# Tool 24: Create snapshot
+def tool_create_snapshot(vm_name: str, snapshot_name: str, description: str = "",
+                        memory: bool = False, quiesce: bool = False) -> str:
+    """Create a snapshot of a virtual machine."""
+    _check_auth()
+    return manager.create_snapshot(vm_name, snapshot_name, description, memory, quiesce)
+
+# Tool 25: Remove snapshot
+def tool_remove_snapshot(vm_name: str, snapshot_name: str, remove_children: bool = True) -> str:
+    """Remove a snapshot from a virtual machine."""
+    _check_auth()
+    return manager.remove_snapshot(vm_name, snapshot_name, remove_children)
+
+# Tool 26: Revert to snapshot
+def tool_revert_snapshot(vm_name: str, snapshot_name: str) -> str:
+    """Revert a virtual machine to a specific snapshot."""
+    _check_auth()
+    return manager.revert_snapshot(vm_name, snapshot_name)
+
+# Tool 27: List snapshots
+def tool_list_snapshots(vm_name: str) -> list:
+    """List all snapshots for a virtual machine."""
+    _check_auth()
+    return manager.list_snapshots(vm_name)
+
+# Tool 28: Remove all snapshots
+def tool_remove_all_snapshots(vm_name: str) -> str:
+    """Remove all snapshots from a virtual machine."""
+    _check_auth()
+    return manager.remove_all_snapshots(vm_name)
+
 # Register the above functions as tools and resources for the MCP Server
 # Define tools with proper MCP Tool schema (name, description, inputSchema only)
 tools = {
-    "ping": types.Tool(
-        name="ping",
-        description="A simple test tool that echoes back a message. Use this to verify MCP connectivity.",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "message": {"type": "string", "description": "Message to echo back", "default": "pong"}
-            }
-        }
-    ),
-    "authenticate": types.Tool(
-        name="authenticate",
-        description="Authenticate using API key to enable privileged operations",
-        inputSchema={"type": "object", "properties": {"key": {"type": "string"}}, "required": ["key"]}
-    ),
-    "createVM": types.Tool(
-        name="createVM",
+    "create_vm": types.Tool(
+        name="create_vm",
         description="Create a new virtual machine",
         inputSchema={
             "type": "object",
             "properties": {
-                "name": {"type": "string"},
-                "cpu": {"type": "integer"},
-                "memory": {"type": "integer"},
-                "datastore": {"type": "string"},
-                "network": {"type": "string"}
+                "name": {"type": "string", "description": "VM name"},
+                "cpu": {"type": "integer", "description": "Number of CPUs"},
+                "memory": {"type": "integer", "description": "Memory in MB"},
+                "datastore": {"type": "string", "description": "Datastore name (optional)"},
+                "network": {"type": "string", "description": "Network name (optional)"}
             },
             "required": ["name", "cpu", "memory"]
         }
     ),
-    "cloneVM": types.Tool(
-        name="cloneVM",
+    "clone_vm": types.Tool(
+        name="clone_vm",
         description="Clone a virtual machine from a template or existing VM",
         inputSchema={
             "type": "object",
             "properties": {
-                "template_name": {"type": "string"},
-                "new_name": {"type": "string"}
+                "template_name": {"type": "string", "description": "Name of the template or VM to clone"},
+                "new_name": {"type": "string", "description": "Name for the new VM"}
             },
             "required": ["template_name", "new_name"]
         }
     ),
-    "deleteVM": types.Tool(
-        name="deleteVM",
+    "delete_vm": types.Tool(
+        name="delete_vm",
         description="Delete a virtual machine",
         inputSchema={
             "type": "object",
-            "properties": {"name": {"type": "string"}},
+            "properties": {"name": {"type": "string", "description": "VM name"}},
             "required": ["name"]
         }
     ),
-    "powerOn": types.Tool(
-        name="powerOn",
+    "power_on_vm": types.Tool(
+        name="power_on_vm",
         description="Power on a virtual machine",
         inputSchema={
             "type": "object",
-            "properties": {"name": {"type": "string"}},
+            "properties": {"name": {"type": "string", "description": "VM name"}},
             "required": ["name"]
         }
     ),
-    "powerOff": types.Tool(
-        name="powerOff",
+    "power_off_vm": types.Tool(
+        name="power_off_vm",
         description="Power off a virtual machine",
         inputSchema={
             "type": "object",
-            "properties": {"name": {"type": "string"}},
+            "properties": {"name": {"type": "string", "description": "VM name"}},
             "required": ["name"]
         }
-    ),
-    "listVMs": types.Tool(
-        name="listVMs",
-        description="List all virtual machines",
-        inputSchema={"type": "object", "properties": {}}
     ),
     "list_vms": types.Tool(
         name="list_vms",
@@ -938,6 +1108,47 @@ tools = {
             "required": ["vm_name"]
         }
     ),
+    "get_vm_performance": types.Tool(
+        name="get_vm_performance",
+        description="Get performance data for a virtual machine",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "vm_name": {"type": "string", "description": "Name of the virtual machine"}
+            },
+            "required": ["vm_name"]
+        }
+    ),
+    "get_vm_summary_stats": types.Tool(
+        name="get_vm_summary_stats",
+        description="Get summary statistics for a virtual machine",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "vm_name": {"type": "string", "description": "Name of the virtual machine"}
+            },
+            "required": ["vm_name"]
+        }
+    ),
+    "create_vm_custom": types.Tool(
+        name="create_vm_custom",
+        description="Create a custom virtual machine with advanced configuration options",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "name": {"type": "string", "description": "VM name"},
+                "cpu": {"type": "integer", "description": "Number of CPUs"},
+                "memory": {"type": "integer", "description": "Memory in MB"},
+                "disk_size_gb": {"type": "integer", "description": "Disk size in GB", "default": 10},
+                "guest_id": {"type": "string", "description": "Guest OS identifier", "default": "otherGuest"},
+                "datastore": {"type": "string", "description": "Datastore name (optional)"},
+                "network": {"type": "string", "description": "Network name (optional)"},
+                "thin_provisioned": {"type": "boolean", "description": "Use thin provisioning", "default": True},
+                "annotation": {"type": "string", "description": "VM annotation/description"}
+            },
+            "required": ["name", "cpu", "memory"]
+        }
+    ),
     "list_templates": types.Tool(
         name="list_templates",
         description="List all virtual machine templates",
@@ -946,6 +1157,11 @@ tools = {
     "list_datastores": types.Tool(
         name="list_datastores",
         description="List all datastores with their details",
+        inputSchema={"type": "object", "properties": {}}
+    ),
+    "list_datastore_clusters": types.Tool(
+        name="list_datastore_clusters",
+        description="List all datastore clusters (StoragePods) with their datastores",
         inputSchema={"type": "object", "properties": {}}
     ),
     "list_networks": types.Tool(
@@ -1007,85 +1223,85 @@ tools = {
         description="List all available performance counters",
         inputSchema={"type": "object", "properties": {}}
     ),
-    "get_vm_summary_stats": types.Tool(
-        name="get_vm_summary_stats",
-        description="Get summary statistics for a virtual machine",
+    "create_snapshot": types.Tool(
+        name="create_snapshot",
+        description="Create a snapshot of a virtual machine",
         inputSchema={
             "type": "object",
             "properties": {
-                "vm_name": {"type": "string", "description": "Name of the virtual machine"}
+                "vm_name": {"type": "string", "description": "Name of the VM"},
+                "snapshot_name": {"type": "string", "description": "Name for the snapshot"},
+                "description": {"type": "string", "description": "Snapshot description", "default": ""},
+                "memory": {"type": "boolean", "description": "Include VM memory in snapshot", "default": False},
+                "quiesce": {"type": "boolean", "description": "Quiesce guest file system", "default": False}
+            },
+            "required": ["vm_name", "snapshot_name"]
+        }
+    ),
+    "remove_snapshot": types.Tool(
+        name="remove_snapshot",
+        description="Remove a snapshot from a virtual machine",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "vm_name": {"type": "string", "description": "Name of the VM"},
+                "snapshot_name": {"type": "string", "description": "Name of the snapshot to remove"},
+                "remove_children": {"type": "boolean", "description": "Remove child snapshots", "default": True}
+            },
+            "required": ["vm_name", "snapshot_name"]
+        }
+    ),
+    "revert_snapshot": types.Tool(
+        name="revert_snapshot",
+        description="Revert a virtual machine to a specific snapshot",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "vm_name": {"type": "string", "description": "Name of the VM"},
+                "snapshot_name": {"type": "string", "description": "Name of the snapshot to revert to"}
+            },
+            "required": ["vm_name", "snapshot_name"]
+        }
+    ),
+    "list_snapshots": types.Tool(
+        name="list_snapshots",
+        description="List all snapshots for a virtual machine",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "vm_name": {"type": "string", "description": "Name of the VM"}
             },
             "required": ["vm_name"]
         }
     ),
-    "get_vm_performance": types.Tool(
-        name="get_vm_performance",
-        description="Get performance data for a virtual machine",
+    "remove_all_snapshots": types.Tool(
+        name="remove_all_snapshots",
+        description="Remove all snapshots from a virtual machine",
         inputSchema={
             "type": "object",
             "properties": {
-                "vm_name": {"type": "string", "description": "Name of the virtual machine"}
+                "vm_name": {"type": "string", "description": "Name of the VM"}
             },
             "required": ["vm_name"]
-        }
-    ),
-    "create_vm_custom": types.Tool(
-        name="create_vm_custom",
-        description="Create a custom virtual machine with advanced configuration options",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "name": {"type": "string", "description": "VM name"},
-                "cpu": {"type": "integer", "description": "Number of CPUs"},
-                "memory": {"type": "integer", "description": "Memory in MB"},
-                "disk_size_gb": {"type": "integer", "description": "Disk size in GB", "default": 10},
-                "guest_id": {"type": "string", "description": "Guest OS identifier", "default": "otherGuest"},
-                "datastore": {"type": "string", "description": "Datastore name (optional)"},
-                "network": {"type": "string", "description": "Network name (optional)"},
-                "thin_provisioned": {"type": "boolean", "description": "Use thin provisioning", "default": True},
-                "annotation": {"type": "string", "description": "VM annotation/description"}
-            },
-            "required": ["name", "cpu", "memory"]
-        }
-    ),
-    "power_on_vm": types.Tool(
-        name="power_on_vm",
-        description="Power on a virtual machine",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "name": {"type": "string", "description": "Name of the virtual machine"}
-            },
-            "required": ["name"]
-        }
-    ),
-    "power_off_vm": types.Tool(
-        name="power_off_vm",
-        description="Power off a virtual machine",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "name": {"type": "string", "description": "Name of the virtual machine"}
-            },
-            "required": ["name"]
         }
     )
 }
 
 # Map tool names to their handler functions
 tool_handlers = {
-    "ping": lambda args: tool_ping(**args),
-    "authenticate": lambda args: tool_authenticate(**args),
-    "createVM": lambda args: tool_create_vm(**args),
-    "cloneVM": lambda args: tool_clone_vm(**args),
-    "deleteVM": lambda args: tool_delete_vm(**args),
-    "powerOn": lambda args: tool_power_on(**args),
-    "powerOff": lambda args: tool_power_off(**args),
-    "listVMs": lambda args: tool_list_vms(),
+    "create_vm": lambda args: tool_create_vm(**args),
+    "clone_vm": lambda args: tool_clone_vm(**args),
+    "delete_vm": lambda args: tool_delete_vm(**args),
+    "power_on_vm": lambda args: tool_power_on_vm(**args),
+    "power_off_vm": lambda args: tool_power_off_vm(**args),
     "list_vms": lambda args: tool_list_vms(),
     "get_vm_details": lambda args: tool_get_vm_details(**args),
+    "get_vm_performance": lambda args: tool_get_vm_performance(**args),
+    "get_vm_summary_stats": lambda args: tool_get_vm_summary_stats(**args),
+    "create_vm_custom": lambda args: tool_create_vm_custom(**args),
     "list_templates": lambda args: tool_list_templates(),
     "list_datastores": lambda args: tool_list_datastores(),
+    "list_datastore_clusters": lambda args: tool_list_datastore_clusters(),
     "list_networks": lambda args: tool_list_networks(),
     "list_hosts": lambda args: tool_list_hosts(),
     "get_host_details": lambda args: tool_get_host_details(**args),
@@ -1093,11 +1309,11 @@ tool_handlers = {
     "get_host_hardware_health": lambda args: tool_get_host_hardware_health(**args),
     "get_host_performance": lambda args: tool_get_host_performance(**args),
     "list_performance_counters": lambda args: tool_list_performance_counters(),
-    "get_vm_summary_stats": lambda args: tool_get_vm_summary_stats(**args),
-    "get_vm_performance": lambda args: tool_get_vm_performance(**args),
-    "create_vm_custom": lambda args: tool_create_vm_custom(**args),
-    "power_on_vm": lambda args: tool_power_on(**args),
-    "power_off_vm": lambda args: tool_power_off(**args),
+    "create_snapshot": lambda args: tool_create_snapshot(**args),
+    "remove_snapshot": lambda args: tool_remove_snapshot(**args),
+    "revert_snapshot": lambda args: tool_revert_snapshot(**args),
+    "list_snapshots": lambda args: tool_list_snapshots(**args),
+    "remove_all_snapshots": lambda args: tool_remove_all_snapshots(**args),
 }
 
 resources = {
