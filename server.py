@@ -922,6 +922,11 @@ tools = {
         description="List all virtual machines",
         inputSchema={"type": "object", "properties": {}}
     ),
+    "list_vms": types.Tool(
+        name="list_vms",
+        description="List all virtual machines",
+        inputSchema={"type": "object", "properties": {}}
+    ),
     "get_vm_details": types.Tool(
         name="get_vm_details",
         description="Get detailed information about a specific virtual machine",
@@ -1077,6 +1082,7 @@ tool_handlers = {
     "powerOn": lambda args: tool_power_on(**args),
     "powerOff": lambda args: tool_power_off(**args),
     "listVMs": lambda args: tool_list_vms(),
+    "list_vms": lambda args: tool_list_vms(),
     "get_vm_details": lambda args: tool_get_vm_details(**args),
     "list_templates": lambda args: tool_list_templates(),
     "list_datastores": lambda args: tool_list_datastores(),
