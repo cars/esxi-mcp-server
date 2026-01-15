@@ -199,6 +199,258 @@ class VMwareManager:
             stats["network_receive_KBps"] = None
         return stats
 
+    def get_vm_details(self, vm_name: str) -> Dict[str, Any]:
+        """Get detailed information about a specific virtual machine."""
+        vm = self.find_vm(vm_name)
+        if not vm:
+            raise Exception(f"VM {vm_name} not found")
+        
+        details = {
+            "name": vm.name,
+            "power_state": str(vm.runtime.powerState),
+            "guest_os": vm.config.guestFullName if vm.config else "Unknown",
+            "cpu_count": vm.config.hardware.numCPU if vm.config else 0,
+            "memory_mb": vm.config.hardware.memoryMB if vm.config else 0,
+            "uuid": vm.config.uuid if vm.config else None,
+            "instance_uuid": vm.config.instanceUuid if vm.config else None,
+            "ip_address": vm.guest.ipAddress if vm.guest else None,
+            "tools_status": str(vm.guest.toolsStatus) if vm.guest else "Unknown",
+            "tools_version": vm.guest.toolsVersion if vm.guest else None,
+            "hostname": vm.guest.hostName if vm.guest else None,
+            "template": vm.config.template if vm.config else False,
+            "annotation": vm.config.annotation if vm.config else "",
+        }
+        
+        # Get disk information
+        if vm.config and vm.config.hardware:
+            disks = []
+            for device in vm.config.hardware.device:
+                if isinstance(device, vim.vm.device.VirtualDisk):
+                    disk_info = {
+                        "label": device.deviceInfo.label,
+                        "capacity_gb": round(device.capacityInKB / (1024**2), 2),
+                        "disk_mode": device.backing.diskMode if hasattr(device.backing, 'diskMode') else None,
+                    }
+                    disks.append(disk_info)
+            details["disks"] = disks
+        
+        # Get network adapter information
+        if vm.config and vm.config.hardware:
+            networks = []
+            for device in vm.config.hardware.device:
+                if isinstance(device, vim.vm.device.VirtualEthernetCard):
+                    net_info = {
+                        "label": device.deviceInfo.label,
+                        "mac_address": device.macAddress,
+                        "connected": device.connectable.connected if device.connectable else False,
+                    }
+                    if hasattr(device.backing, 'deviceName'):
+                        net_info["network"] = device.backing.deviceName
+                    networks.append(net_info)
+            details["networks"] = networks
+        
+        return details
+
+    def list_templates(self) -> list:
+        """List all virtual machine templates."""
+        templates = []
+        container = self.content.viewManager.CreateContainerView(self.content.rootFolder, [vim.VirtualMachine], True)
+        for vm in container.view:
+            if vm.config and vm.config.template:
+                templates.append(vm.name)
+        container.Destroy()
+        return templates
+
+    def list_datastores(self) -> list:
+        """List all datastores with their details."""
+        datastores = []
+        container = self.content.viewManager.CreateContainerView(self.content.rootFolder, [vim.Datastore], True)
+        for ds in container.view:
+            ds_info = {
+                "name": ds.name,
+                "type": ds.summary.type,
+                "capacity_gb": round(ds.summary.capacity / (1024**3), 2),
+                "free_space_gb": round(ds.summary.freeSpace / (1024**3), 2),
+                "accessible": ds.summary.accessible,
+                "maintenance_mode": ds.summary.maintenanceMode if hasattr(ds.summary, 'maintenanceMode') else "normal",
+            }
+            datastores.append(ds_info)
+        container.Destroy()
+        return datastores
+
+    def list_networks(self) -> list:
+        """List all networks."""
+        networks = []
+        container = self.content.viewManager.CreateContainerView(self.content.rootFolder, [vim.Network], True)
+        for net in container.view:
+            net_info = {
+                "name": net.name,
+                "accessible": net.summary.accessible if hasattr(net.summary, 'accessible') else True,
+            }
+            # Check if it's a distributed virtual portgroup
+            if isinstance(net, vim.dvs.DistributedVirtualPortgroup):
+                net_info["type"] = "DistributedVirtualPortgroup"
+                net_info["vlan"] = net.config.defaultPortConfig.vlan.vlanId if hasattr(net.config.defaultPortConfig, 'vlan') else None
+            else:
+                net_info["type"] = "Network"
+            networks.append(net_info)
+        container.Destroy()
+        return networks
+
+    def list_hosts(self) -> list:
+        """List all ESXi hosts."""
+        hosts = []
+        container = self.content.viewManager.CreateContainerView(self.content.rootFolder, [vim.HostSystem], True)
+        for host in container.view:
+            hosts.append(host.name)
+        container.Destroy()
+        return hosts
+
+    def find_host(self, name: str) -> Optional[vim.HostSystem]:
+        """Find host object by name."""
+        container = self.content.viewManager.CreateContainerView(self.content.rootFolder, [vim.HostSystem], True)
+        host_obj = None
+        for host in container.view:
+            if host.name == name:
+                host_obj = host
+                break
+        container.Destroy()
+        return host_obj
+
+    def get_host_details(self, host_name: str) -> Dict[str, Any]:
+        """Get detailed information about a specific host."""
+        host = self.find_host(host_name)
+        if not host:
+            raise Exception(f"Host {host_name} not found")
+        
+        details = {
+            "name": host.name,
+            "connection_state": str(host.runtime.connectionState),
+            "power_state": str(host.runtime.powerState),
+            "standby_mode": str(host.runtime.standbyMode) if host.runtime.standbyMode else None,
+            "in_maintenance_mode": host.runtime.inMaintenanceMode,
+            "vendor": host.hardware.systemInfo.vendor if host.hardware else None,
+            "model": host.hardware.systemInfo.model if host.hardware else None,
+            "uuid": host.hardware.systemInfo.uuid if host.hardware else None,
+            "cpu_model": host.hardware.cpuInfo.model if host.hardware and host.hardware.cpuInfo else None,
+            "cpu_cores": host.hardware.cpuInfo.numCpuCores if host.hardware and host.hardware.cpuInfo else 0,
+            "cpu_threads": host.hardware.cpuInfo.numCpuThreads if host.hardware and host.hardware.cpuInfo else 0,
+            "cpu_mhz": host.hardware.cpuInfo.hz // 1000000 if host.hardware and host.hardware.cpuInfo else 0,
+            "memory_gb": round(host.hardware.memorySize / (1024**3), 2) if host.hardware else 0,
+            "hypervisor_version": host.config.product.version if host.config and host.config.product else None,
+            "hypervisor_build": host.config.product.build if host.config and host.config.product else None,
+        }
+        
+        return details
+
+    def get_host_performance_metrics(self, host_name: str) -> Dict[str, Any]:
+        """Get performance metrics for a specific host."""
+        host = self.find_host(host_name)
+        if not host:
+            raise Exception(f"Host {host_name} not found")
+        
+        metrics = {
+            "cpu_usage_mhz": host.summary.quickStats.overallCpuUsage if host.summary.quickStats else 0,
+            "memory_usage_mb": host.summary.quickStats.overallMemoryUsage if host.summary.quickStats else 0,
+            "uptime_seconds": host.summary.quickStats.uptime if host.summary.quickStats else 0,
+        }
+        
+        return metrics
+
+    def get_host_hardware_health(self, host_name: str) -> Dict[str, Any]:
+        """Get hardware health information for a specific host."""
+        host = self.find_host(host_name)
+        if not host:
+            raise Exception(f"Host {host_name} not found")
+        
+        health = {
+            "overall_status": str(host.overallStatus),
+            "hardware_status": [],
+        }
+        
+        # Get hardware sensor information if available
+        if hasattr(host.runtime, 'healthSystemRuntime') and host.runtime.healthSystemRuntime:
+            health_info = host.runtime.healthSystemRuntime
+            if hasattr(health_info, 'systemHealthInfo') and health_info.systemHealthInfo:
+                sensor_info = health_info.systemHealthInfo.numericSensorInfo
+                if sensor_info:
+                    for sensor in sensor_info:
+                        sensor_data = {
+                            "name": sensor.name,
+                            "health_state": str(sensor.healthState),
+                            "current_reading": sensor.currentReading,
+                            "unit": sensor.unitModifier,
+                            "sensor_type": sensor.sensorType,
+                        }
+                        health["hardware_status"].append(sensor_data)
+        
+        return health
+
+    def get_host_performance(self, host_name: str) -> Dict[str, Any]:
+        """Get detailed performance data for a specific host."""
+        host = self.find_host(host_name)
+        if not host:
+            raise Exception(f"Host {host_name} not found")
+        
+        stats = {}
+        qs = host.summary.quickStats
+        
+        # Basic performance stats
+        stats["cpu_usage_mhz"] = qs.overallCpuUsage if qs else 0
+        stats["memory_usage_mb"] = qs.overallMemoryUsage if qs else 0
+        stats["uptime_seconds"] = qs.uptime if qs else 0
+        
+        # Calculate utilization percentages
+        if host.hardware:
+            total_cpu_mhz = host.hardware.cpuInfo.numCpuCores * (host.hardware.cpuInfo.hz // 1000000) if host.hardware.cpuInfo else 0
+            total_memory_mb = host.hardware.memorySize // (1024**2) if host.hardware.memorySize else 0
+            
+            stats["cpu_total_mhz"] = total_cpu_mhz
+            stats["cpu_usage_percent"] = round((stats["cpu_usage_mhz"] / total_cpu_mhz * 100), 2) if total_cpu_mhz > 0 else 0
+            stats["memory_total_mb"] = total_memory_mb
+            stats["memory_usage_percent"] = round((stats["memory_usage_mb"] / total_memory_mb * 100), 2) if total_memory_mb > 0 else 0
+        
+        return stats
+
+    def list_performance_counters(self) -> list:
+        """List available performance counters."""
+        counters = []
+        pm = self.content.perfManager
+        
+        for counter in pm.perfCounter:
+            counter_info = {
+                "key": counter.key,
+                "group": counter.groupInfo.key,
+                "name": counter.nameInfo.key,
+                "rollup_type": str(counter.rollupType),
+                "stats_type": str(counter.statsType),
+                "unit": counter.unitInfo.key,
+                "description": counter.nameInfo.summary if counter.nameInfo else "",
+            }
+            counters.append(counter_info)
+        
+        return counters
+
+    def get_vm_summary_stats(self, vm_name: str) -> Dict[str, Any]:
+        """Get summary statistics for a virtual machine."""
+        vm = self.find_vm(vm_name)
+        if not vm:
+            raise Exception(f"VM {vm_name} not found")
+        
+        stats = {
+            "name": vm.name,
+            "power_state": str(vm.runtime.powerState),
+            "overall_cpu_usage_mhz": vm.summary.quickStats.overallCpuUsage if vm.summary.quickStats else 0,
+            "overall_cpu_demand_mhz": vm.summary.quickStats.overallCpuDemand if vm.summary.quickStats else 0,
+            "guest_memory_usage_mb": vm.summary.quickStats.guestMemoryUsage if vm.summary.quickStats else 0,
+            "host_memory_usage_mb": vm.summary.quickStats.hostMemoryUsage if vm.summary.quickStats else 0,
+            "uptime_seconds": vm.summary.quickStats.uptimeSeconds if vm.summary.quickStats else 0,
+            "committed_storage_gb": round(vm.summary.storage.committed / (1024**3), 2) if vm.summary.storage else 0,
+            "uncommitted_storage_gb": round(vm.summary.storage.uncommitted / (1024**3), 2) if vm.summary.storage else 0,
+        }
+        
+        return stats
+
     def create_vm(self, name: str, cpus: int, memory_mb: int, datastore: Optional[str] = None, network: Optional[str] = None) -> str:
         """Create a new virtual machine (from scratch, with an empty disk and optional network)."""
         # If a specific datastore or network is provided, update the corresponding object accordingly
@@ -305,6 +557,90 @@ class VMwareManager:
             raise
         logging.info(f"Cloned virtual machine {template_name} to new VM: {new_name}")
         return f"VM '{new_name}' cloned from '{template_name}'."
+
+    def create_vm_custom(self, name: str, cpus: int, memory_mb: int, disk_size_gb: int = 10,
+                        guest_id: str = "otherGuest", datastore: Optional[str] = None,
+                        network: Optional[str] = None, thin_provisioned: bool = True,
+                        annotation: Optional[str] = None) -> str:
+        """Create a custom virtual machine with more configuration options."""
+        # If a specific datastore or network is provided, update the corresponding object accordingly
+        datastore_obj = self.datastore_obj
+        network_obj = self.network_obj
+        if datastore:
+            datastore_obj = next((ds for ds in self.datacenter_obj.datastoreFolder.childEntity
+                                   if isinstance(ds, vim.Datastore) and ds.name == datastore), None)
+            if not datastore_obj:
+                raise Exception(f"Specified datastore {datastore} not found")
+        if network:
+            networks = self.datacenter_obj.networkFolder.childEntity
+            network_obj = next((net for net in networks if net.name == network), None)
+            if not network_obj:
+                raise Exception(f"Specified network {network} not found")
+
+        # Build VM configuration specification
+        vm_spec = vim.vm.ConfigSpec(name=name, memoryMB=memory_mb, numCPUs=cpus, guestId=guest_id)
+        if annotation:
+            vm_spec.annotation = annotation
+        
+        device_specs = []
+
+        # Add SCSI controller
+        controller_spec = vim.vm.device.VirtualDeviceSpec()
+        controller_spec.operation = vim.vm.device.VirtualDeviceSpec.Operation.add
+        controller_spec.device = vim.vm.device.ParaVirtualSCSIController()
+        controller_spec.device.deviceInfo = vim.Description(label="SCSI Controller", summary="ParaVirtual SCSI Controller")
+        controller_spec.device.busNumber = 0
+        controller_spec.device.sharedBus = vim.vm.device.VirtualSCSIController.Sharing.noSharing
+        controller_spec.device.key = -101
+        device_specs.append(controller_spec)
+
+        # Add virtual disk
+        disk_spec = vim.vm.device.VirtualDeviceSpec()
+        disk_spec.operation = vim.vm.device.VirtualDeviceSpec.Operation.add
+        disk_spec.fileOperation = vim.vm.device.VirtualDeviceSpec.FileOperation.create
+        disk_spec.device = vim.vm.device.VirtualDisk()
+        disk_spec.device.capacityInKB = 1024 * 1024 * disk_size_gb
+        disk_spec.device.deviceInfo = vim.Description(label="Hard Disk 1", summary=f"{disk_size_gb} GB disk")
+        disk_spec.device.backing = vim.vm.device.VirtualDisk.FlatVer2BackingInfo()
+        disk_spec.device.backing.diskMode = "persistent"
+        disk_spec.device.backing.thinProvisioned = thin_provisioned
+        disk_spec.device.backing.datastore = datastore_obj
+        disk_spec.device.controllerKey = controller_spec.device.key
+        disk_spec.device.unitNumber = 0
+        device_specs.append(disk_spec)
+
+        # If a network is provided, add a virtual network adapter
+        if network_obj:
+            nic_spec = vim.vm.device.VirtualDeviceSpec()
+            nic_spec.operation = vim.vm.device.VirtualDeviceSpec.Operation.add
+            nic_spec.device = vim.vm.device.VirtualVmxnet3()
+            nic_spec.device.deviceInfo = vim.Description(label="Network Adapter 1", summary=network_obj.name)
+            if isinstance(network_obj, vim.Network):
+                nic_spec.device.backing = vim.vm.device.VirtualEthernetCard.NetworkBackingInfo(network=network_obj, deviceName=network_obj.name)
+            elif isinstance(network_obj, vim.dvs.DistributedVirtualPortgroup):
+                dvs_uuid = network_obj.config.distributedVirtualSwitch.uuid
+                port_key = network_obj.key
+                nic_spec.device.backing = vim.vm.device.VirtualEthernetCard.DistributedVirtualPortBackingInfo(
+                    port=vim.dvs.PortConnection(portgroupKey=port_key, switchUuid=dvs_uuid)
+                )
+            nic_spec.device.connectable = vim.vm.device.VirtualDevice.ConnectInfo(startConnected=True, allowGuestControl=True)
+            device_specs.append(nic_spec)
+
+        vm_spec.deviceChange = device_specs
+
+        # Get the folder in which to place the VM
+        vm_folder = self.datacenter_obj.vmFolder
+        try:
+            task = vm_folder.CreateVM_Task(config=vm_spec, pool=self.resource_pool)
+            while task.info.state not in [vim.TaskInfo.State.success, vim.TaskInfo.State.error]:
+                continue
+            if task.info.state == vim.TaskInfo.State.error:
+                raise task.info.error
+        except Exception as e:
+            logging.error(f"Failed to create custom virtual machine: {e}")
+            raise
+        logging.info(f"Custom virtual machine created: {name}")
+        return f"Custom VM '{name}' created with {cpus} CPUs, {memory_mb}MB RAM, and {disk_size_gb}GB disk."
 
     def delete_vm(self, name: str) -> str:
         """Delete the specified virtual machine."""
@@ -427,6 +763,88 @@ def tool_ping(message: str = "pong") -> str:
     """A simple test tool that echoes back a message."""
     return f"Ping response: {message}"
 
+# Tool 9: Get VM details
+def tool_get_vm_details(vm_name: str) -> dict:
+    """Get detailed information about a virtual machine."""
+    _check_auth()
+    return manager.get_vm_details(vm_name)
+
+# Tool 10: List templates
+def tool_list_templates() -> list:
+    """List all virtual machine templates."""
+    _check_auth()
+    return manager.list_templates()
+
+# Tool 11: List datastores
+def tool_list_datastores() -> list:
+    """List all datastores."""
+    _check_auth()
+    return manager.list_datastores()
+
+# Tool 12: List networks
+def tool_list_networks() -> list:
+    """List all networks."""
+    _check_auth()
+    return manager.list_networks()
+
+# Tool 13: List hosts
+def tool_list_hosts() -> list:
+    """List all ESXi hosts."""
+    _check_auth()
+    return manager.list_hosts()
+
+# Tool 14: Get host details
+def tool_get_host_details(host_name: str) -> dict:
+    """Get detailed information about a host."""
+    _check_auth()
+    return manager.get_host_details(host_name)
+
+# Tool 15: Get host performance metrics
+def tool_get_host_performance_metrics(host_name: str) -> dict:
+    """Get performance metrics for a host."""
+    _check_auth()
+    return manager.get_host_performance_metrics(host_name)
+
+# Tool 16: Get host hardware health
+def tool_get_host_hardware_health(host_name: str) -> dict:
+    """Get hardware health information for a host."""
+    _check_auth()
+    return manager.get_host_hardware_health(host_name)
+
+# Tool 17: Get host performance
+def tool_get_host_performance(host_name: str) -> dict:
+    """Get detailed performance data for a host."""
+    _check_auth()
+    return manager.get_host_performance(host_name)
+
+# Tool 18: List performance counters
+def tool_list_performance_counters() -> list:
+    """List all available performance counters."""
+    _check_auth()
+    return manager.list_performance_counters()
+
+# Tool 19: Get VM summary stats
+def tool_get_vm_summary_stats(vm_name: str) -> dict:
+    """Get summary statistics for a virtual machine."""
+    _check_auth()
+    return manager.get_vm_summary_stats(vm_name)
+
+# Tool 20: Get VM performance (exposing as a tool in addition to resource)
+def tool_get_vm_performance(vm_name: str) -> dict:
+    """Get performance data for a virtual machine."""
+    _check_auth()
+    return manager.get_vm_performance(vm_name)
+
+# Tool 21: Create custom VM
+def tool_create_vm_custom(name: str, cpu: int, memory: int, disk_size_gb: int = 10,
+                         guest_id: str = "otherGuest", datastore: str = None,
+                         network: str = None, thin_provisioned: bool = True,
+                         annotation: str = None) -> str:
+    """Create a custom virtual machine with advanced options."""
+    _check_auth()
+    return manager.create_vm_custom(name, cpu, memory, disk_size_gb, guest_id,
+                                   datastore, network, thin_provisioned, annotation)
+
 # Register the above functions as tools and resources for the MCP Server
 # Define tools with proper MCP Tool schema (name, description, inputSchema only)
 tools = {
@@ -503,6 +921,154 @@ tools = {
         name="listVMs",
         description="List all virtual machines",
         inputSchema={"type": "object", "properties": {}}
+    ),
+    "list_vms": types.Tool(
+        name="list_vms",
+        description="List all virtual machines",
+        inputSchema={"type": "object", "properties": {}}
+    ),
+    "get_vm_details": types.Tool(
+        name="get_vm_details",
+        description="Get detailed information about a specific virtual machine",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "vm_name": {"type": "string", "description": "Name of the virtual machine"}
+            },
+            "required": ["vm_name"]
+        }
+    ),
+    "list_templates": types.Tool(
+        name="list_templates",
+        description="List all virtual machine templates",
+        inputSchema={"type": "object", "properties": {}}
+    ),
+    "list_datastores": types.Tool(
+        name="list_datastores",
+        description="List all datastores with their details",
+        inputSchema={"type": "object", "properties": {}}
+    ),
+    "list_networks": types.Tool(
+        name="list_networks",
+        description="List all networks",
+        inputSchema={"type": "object", "properties": {}}
+    ),
+    "list_hosts": types.Tool(
+        name="list_hosts",
+        description="List all ESXi hosts",
+        inputSchema={"type": "object", "properties": {}}
+    ),
+    "get_host_details": types.Tool(
+        name="get_host_details",
+        description="Get detailed information about a specific host",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "host_name": {"type": "string", "description": "Name of the host"}
+            },
+            "required": ["host_name"]
+        }
+    ),
+    "get_host_performance_metrics": types.Tool(
+        name="get_host_performance_metrics",
+        description="Get performance metrics for a specific host",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "host_name": {"type": "string", "description": "Name of the host"}
+            },
+            "required": ["host_name"]
+        }
+    ),
+    "get_host_hardware_health": types.Tool(
+        name="get_host_hardware_health",
+        description="Get hardware health information for a specific host",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "host_name": {"type": "string", "description": "Name of the host"}
+            },
+            "required": ["host_name"]
+        }
+    ),
+    "get_host_performance": types.Tool(
+        name="get_host_performance",
+        description="Get detailed performance data for a specific host",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "host_name": {"type": "string", "description": "Name of the host"}
+            },
+            "required": ["host_name"]
+        }
+    ),
+    "list_performance_counters": types.Tool(
+        name="list_performance_counters",
+        description="List all available performance counters",
+        inputSchema={"type": "object", "properties": {}}
+    ),
+    "get_vm_summary_stats": types.Tool(
+        name="get_vm_summary_stats",
+        description="Get summary statistics for a virtual machine",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "vm_name": {"type": "string", "description": "Name of the virtual machine"}
+            },
+            "required": ["vm_name"]
+        }
+    ),
+    "get_vm_performance": types.Tool(
+        name="get_vm_performance",
+        description="Get performance data for a virtual machine",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "vm_name": {"type": "string", "description": "Name of the virtual machine"}
+            },
+            "required": ["vm_name"]
+        }
+    ),
+    "create_vm_custom": types.Tool(
+        name="create_vm_custom",
+        description="Create a custom virtual machine with advanced configuration options",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "name": {"type": "string", "description": "VM name"},
+                "cpu": {"type": "integer", "description": "Number of CPUs"},
+                "memory": {"type": "integer", "description": "Memory in MB"},
+                "disk_size_gb": {"type": "integer", "description": "Disk size in GB", "default": 10},
+                "guest_id": {"type": "string", "description": "Guest OS identifier", "default": "otherGuest"},
+                "datastore": {"type": "string", "description": "Datastore name (optional)"},
+                "network": {"type": "string", "description": "Network name (optional)"},
+                "thin_provisioned": {"type": "boolean", "description": "Use thin provisioning", "default": True},
+                "annotation": {"type": "string", "description": "VM annotation/description"}
+            },
+            "required": ["name", "cpu", "memory"]
+        }
+    ),
+    "power_on_vm": types.Tool(
+        name="power_on_vm",
+        description="Power on a virtual machine",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "name": {"type": "string", "description": "Name of the virtual machine"}
+            },
+            "required": ["name"]
+        }
+    ),
+    "power_off_vm": types.Tool(
+        name="power_off_vm",
+        description="Power off a virtual machine",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "name": {"type": "string", "description": "Name of the virtual machine"}
+            },
+            "required": ["name"]
+        }
     )
 }
 
@@ -515,7 +1081,23 @@ tool_handlers = {
     "deleteVM": lambda args: tool_delete_vm(**args),
     "powerOn": lambda args: tool_power_on(**args),
     "powerOff": lambda args: tool_power_off(**args),
-    "listVMs": lambda args: tool_list_vms()
+    "listVMs": lambda args: tool_list_vms(),
+    "list_vms": lambda args: tool_list_vms(),
+    "get_vm_details": lambda args: tool_get_vm_details(**args),
+    "list_templates": lambda args: tool_list_templates(),
+    "list_datastores": lambda args: tool_list_datastores(),
+    "list_networks": lambda args: tool_list_networks(),
+    "list_hosts": lambda args: tool_list_hosts(),
+    "get_host_details": lambda args: tool_get_host_details(**args),
+    "get_host_performance_metrics": lambda args: tool_get_host_performance_metrics(**args),
+    "get_host_hardware_health": lambda args: tool_get_host_hardware_health(**args),
+    "get_host_performance": lambda args: tool_get_host_performance(**args),
+    "list_performance_counters": lambda args: tool_list_performance_counters(),
+    "get_vm_summary_stats": lambda args: tool_get_vm_summary_stats(**args),
+    "get_vm_performance": lambda args: tool_get_vm_performance(**args),
+    "create_vm_custom": lambda args: tool_create_vm_custom(**args),
+    "power_on_vm": lambda args: tool_power_on(**args),
+    "power_off_vm": lambda args: tool_power_off(**args),
 }
 
 resources = {
