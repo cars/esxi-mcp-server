@@ -422,29 +422,40 @@ def _check_auth():
         if not manager.authenticated:
             raise Exception("Unauthorized: API key required.")
 
+# Tool 8: Ping (test tool that doesn't require VMware)
+def tool_ping(message: str = "pong") -> str:
+    """A simple test tool that echoes back a message."""
+    return f"Ping response: {message}"
+
 # Register the above functions as tools and resources for the MCP Server
-# Encapsulate using mcp.types.Tool and mcp.types.Resource
+# Define tools with proper MCP Tool schema (name, description, inputSchema only)
 tools = {
+    "ping": types.Tool(
+        name="ping",
+        description="A simple test tool that echoes back a message. Use this to verify MCP connectivity.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "message": {"type": "string", "description": "Message to echo back", "default": "pong"}
+            }
+        }
+    ),
     "authenticate": types.Tool(
         name="authenticate",
         description="Authenticate using API key to enable privileged operations",
-        parameters={"key": str},
-        handler=lambda params: tool_authenticate(**params),
         inputSchema={"type": "object", "properties": {"key": {"type": "string"}}, "required": ["key"]}
     ),
     "createVM": types.Tool(
         name="createVM",
         description="Create a new virtual machine",
-        parameters={"name": str, "cpu": int, "memory": int, "datastore": Optional[str], "network": Optional[str]},
-        handler=lambda params: tool_create_vm(**params),
         inputSchema={
             "type": "object",
             "properties": {
                 "name": {"type": "string"},
                 "cpu": {"type": "integer"},
                 "memory": {"type": "integer"},
-                "datastore": {"type": "string", "nullable": True},
-                "network": {"type": "string", "nullable": True}
+                "datastore": {"type": "string"},
+                "network": {"type": "string"}
             },
             "required": ["name", "cpu", "memory"]
         }
@@ -452,8 +463,6 @@ tools = {
     "cloneVM": types.Tool(
         name="cloneVM",
         description="Clone a virtual machine from a template or existing VM",
-        parameters={"template_name": str, "new_name": str},
-        handler=lambda params: tool_clone_vm(**params),
         inputSchema={
             "type": "object",
             "properties": {
@@ -466,8 +475,6 @@ tools = {
     "deleteVM": types.Tool(
         name="deleteVM",
         description="Delete a virtual machine",
-        parameters={"name": str},
-        handler=lambda params: tool_delete_vm(**params),
         inputSchema={
             "type": "object",
             "properties": {"name": {"type": "string"}},
@@ -477,8 +484,6 @@ tools = {
     "powerOn": types.Tool(
         name="powerOn",
         description="Power on a virtual machine",
-        parameters={"name": str},
-        handler=lambda params: tool_power_on(**params),
         inputSchema={
             "type": "object",
             "properties": {"name": {"type": "string"}},
@@ -488,8 +493,6 @@ tools = {
     "powerOff": types.Tool(
         name="powerOff",
         description="Power off a virtual machine",
-        parameters={"name": str},
-        handler=lambda params: tool_power_off(**params),
         inputSchema={
             "type": "object",
             "properties": {"name": {"type": "string"}},
@@ -499,25 +502,28 @@ tools = {
     "listVMs": types.Tool(
         name="listVMs",
         description="List all virtual machines",
-        parameters={},
-        handler=lambda params: tool_list_vms(),
         inputSchema={"type": "object", "properties": {}}
     )
 }
+
+# Map tool names to their handler functions
+tool_handlers = {
+    "ping": lambda args: tool_ping(**args),
+    "authenticate": lambda args: tool_authenticate(**args),
+    "createVM": lambda args: tool_create_vm(**args),
+    "cloneVM": lambda args: tool_clone_vm(**args),
+    "deleteVM": lambda args: tool_delete_vm(**args),
+    "powerOn": lambda args: tool_power_on(**args),
+    "powerOff": lambda args: tool_power_off(**args),
+    "listVMs": lambda args: tool_list_vms()
+}
+
 resources = {
     "vmStats": types.Resource(
         name="vmStats",
         uri="vmstats://{vm_name}",
         description="Get CPU, memory, storage, network usage of a VM",
-        parameters={"vm_name": str},
-        handler=lambda params: resource_vm_performance(**params),
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "vm_name": {"type": "string"}
-            },
-            "required": ["vm_name"]
-        }
+        mimeType="application/json"
     )
 }
 
@@ -530,11 +536,21 @@ async def list_tools_handler():
 @mcp_server.call_tool()
 async def call_tool_handler(name: str, arguments: dict):
     """Handle tool calls."""
-    if name not in tools:
+    if name not in tool_handlers:
         raise ValueError(f"Unknown tool: {name}")
     
-    tool = tools[name]
-    return tool.handler(arguments)
+    # Call the handler function
+    handler = tool_handlers[name]
+    result = handler(arguments)
+    
+    # Return result as text content
+    import json
+    if isinstance(result, (dict, list)):
+        text = json.dumps(result, indent=2)
+    else:
+        text = str(result)
+    
+    return [types.TextContent(type="text", text=text)]
 
 # Register resource handlers
 @mcp_server.list_resources()
@@ -552,7 +568,7 @@ async def read_resource_handler(uri: str):
             # For vmstats://{vm_name}, extract vm_name
             if resource_name == "vmStats":
                 vm_name = uri.replace("vmstats://", "")
-                result = resource.handler({"vm_name": vm_name})
+                result = resource_vm_performance(vm_name)
                 # Return resource content
                 import json
                 return [types.TextContent(
