@@ -5,7 +5,9 @@ A VMware ESXi/vCenter management server based on MCP (Model Control Protocol), p
 ## Features
 
 - Support for ESXi and vCenter Server connections
-- Real-time communication based on SSE (Server-Sent Events)
+- Multiple MCP transport protocols:
+  - **Streamable HTTP** (recommended) - Modern HTTP-based transport at `/message` endpoint
+  - **SSE** (Server-Sent Events) - Legacy SSE transport at `/sse` endpoint
 - RESTful API interface with JSON-RPC support
 - API key authentication
 - Complete virtual machine lifecycle management
@@ -67,13 +69,33 @@ python server.py -c config.yaml
 
 ## API Interface
 
+### Transport Protocols
+
+The server supports two MCP transport protocols:
+
+1. **Streamable HTTP (Recommended)**
+   - Endpoint: `/message`
+   - Methods: `GET` (for streaming responses), `POST` (for requests)
+   - Modern HTTP-based transport protocol
+   - Better compatibility with modern MCP clients
+
+2. **SSE (Server-Sent Events) - Legacy**
+   - Endpoints: `/sse` (GET) and `/sse/messages` (POST)
+   - Traditional SSE-based transport
+   - Maintained for backward compatibility
+
 ### Authentication
 
-All privileged operations require authentication first:
+All privileged operations require authentication. Include your API key in request headers:
 
 ```http
-POST /sse/messages
 Authorization: Bearer your-api-key
+```
+
+Or:
+
+```http
+X-API-Key: your-api-key
 ```
 
 ### Main Tool Interfaces
@@ -170,6 +192,11 @@ MIT License
 Issues and Pull Requests are welcome!
 
 ## Changelog
+
+### v0.0.2
+- Added Streamable HTTP transport support (`/message` endpoint)
+- Enhanced MCP protocol compatibility with modern clients
+- Maintained backward compatibility with SSE transport
 
 ### v0.0.1
 - Initial release

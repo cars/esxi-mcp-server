@@ -9,6 +9,7 @@ from typing import Optional, Dict, Any
 # MCP protocol related imports
 from mcp.server.lowlevel import Server  # MCP server base class
 from mcp.server.sse import SseServerTransport  # SSE transport support
+from mcp.server.streamable_http import StreamableHTTPServerTransport  # Streamable HTTP transport support
 from mcp import types  # MCP type definitions
 
 # pyVmomi VMware API imports
@@ -534,6 +535,9 @@ mcp_server.capabilities = {
 # Maintain a global SSE transport instance for sending events during POST request processing
 active_transport: Optional[SseServerTransport] = None
 
+# Maintain a global StreamableHTTP transport instance for the /message endpoint
+streamable_http_transport: Optional[StreamableHTTPServerTransport] = None
+
 # SSE initialization request handler (HTTP GET /sse)
 async def sse_endpoint(scope, receive, send):
     """Handle SSE connection initialization requests. Establish an MCP SSE session."""
@@ -617,6 +621,57 @@ async def messages_endpoint(scope, receive, send):
                 "headers": [(b"content-type", b"text/plain")]})
     await send({"type": "http.response.body", "body": response_body})
 
+# Streamable HTTP message handler (HTTP GET or POST /message)
+async def streamable_http_endpoint(scope, receive, send):
+    """Handle streamable-http MCP requests."""
+    global streamable_http_transport
+    
+    # Verify API key if configured
+    headers_dict = {k.lower().decode(): v.decode() for (k, v) in scope.get("headers", [])}
+    provided_key = None
+    if b"authorization" in [h[0].lower() for h in scope.get("headers", [])]:
+        provided_key = headers_dict.get("authorization")
+    elif b"x-api-key" in [h[0].lower() for h in scope.get("headers", [])]:
+        provided_key = headers_dict.get("x-api-key")
+    
+    if config.api_key and provided_key != f"Bearer {config.api_key}" and provided_key != config.api_key:
+        # If the correct API key is not provided, return 401
+        await send({"type": "http.response.start", "status": 401, "headers": [(b"content-type", b"text/plain")]})
+        await send({"type": "http.response.body", "body": b"Unauthorized"})
+        logging.warning("No valid API key provided, rejecting streamable-http connection")
+        return
+    
+    # Create transport instance if it doesn't exist
+    if streamable_http_transport is None:
+        streamable_http_transport = StreamableHTTPServerTransport(
+            mcp_session_id=None,
+            is_json_response_enabled=False
+        )
+        logging.info("Created new StreamableHTTPServerTransport instance")
+        
+        # Start the MCP server with the transport in the background
+        async def run_mcp_server():
+            try:
+                async with streamable_http_transport.connect() as (read_stream, write_stream):
+                    init_opts = mcp_server.create_initialization_options()
+                    await mcp_server.run(read_stream, write_stream, init_opts)
+            except Exception as e:
+                logging.error(f"StreamableHTTP MCP server encountered an error: {e}")
+        
+        # Start the MCP server task (it will run in the background)
+        import asyncio
+        asyncio.create_task(run_mcp_server())
+    
+    # Handle the request through the StreamableHTTPServerTransport
+    try:
+        await streamable_http_transport.handle_request(scope, receive, send)
+    except Exception as e:
+        logging.error(f"Error handling streamable-http request: {e}")
+        if not scope.get("_response_started"):
+            await send({"type": "http.response.start", "status": 500,
+                        "headers": [(b"content-type", b"text/plain")]})
+            await send({"type": "http.response.body", "body": str(e).encode('utf-8')})
+
 # Simple ASGI application routing: dispatch requests to the appropriate handler based on the path and method
 async def app(scope, receive, send):
     if scope["type"] == "http":
@@ -638,6 +693,19 @@ async def app(scope, receive, send):
                 await send({"type": "http.response.body", "body": b""})
             else:
                 await messages_endpoint(scope, receive, send)
+        elif path == "/message" and method in ("GET", "POST", "OPTIONS"):
+            # Streamable HTTP endpoint for MCP
+            if method == "OPTIONS":
+                # Return allowed methods for CORS
+                headers = [
+                    (b"access-control-allow-methods", b"GET, POST, OPTIONS"),
+                    (b"access-control-allow-headers", b"Content-Type, Authorization, X-API-Key, MCP-Session-Id"),
+                    (b"access-control-allow-origin", b"*")
+                ]
+                await send({"type": "http.response.start", "status": 204, "headers": headers})
+                await send({"type": "http.response.body", "body": b""})
+            else:
+                await streamable_http_endpoint(scope, receive, send)
         else:
             # Route not found
             await send({"type": "http.response.start", "status": 404,
