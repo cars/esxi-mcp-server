@@ -24,6 +24,17 @@ class VMwareManager:
         self.authenticated = False   # Authentication flag for API key verification
         self._connect_vcenter()
 
+    def _ensure_connected(self):
+        """Check if the vCenter session is still active and reconnect if needed."""
+        try:
+            if self.si is None:
+                raise Exception("No service instance")
+            # Lightweight call to verify the session is alive
+            self.si.CurrentTime()
+        except Exception:
+            logging.warning("vCenter/ESXi session expired or lost, reconnecting...")
+            self._connect_vcenter()
+
     def _connect_vcenter(self):
         """Connect to vCenter/ESXi and retrieve main resource object references."""
         try:
