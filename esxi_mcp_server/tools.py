@@ -15,7 +15,8 @@ class ToolHandlers:
         self.config = config
     
     def _check_auth(self):
-        """Internal helper: Check API access permissions."""
+        """Internal helper: Ensure connection is alive and check API access permissions."""
+        self.manager._ensure_connected()
         if self.config.api_key:
             # If an API key is configured, require that manager.authenticated is True
             if not self.manager.authenticated:
