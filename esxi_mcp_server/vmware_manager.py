@@ -532,30 +532,51 @@ class VMwareManager:
         return f"VM '{name}' created."
 
     def clone_vm(self, template_name: str, new_name: str) -> str:
-        """Clone a new virtual machine from an existing template or VM."""
-        template_vm = self.find_vm(template_name)
-        if not template_vm:
-            raise Exception(f"Template virtual machine {template_name} not found")
-        vm_folder = template_vm.parent  # Place the new VM in the same folder as the template
-        if not isinstance(vm_folder, vim.Folder):
-            # ESXi fallback: use datacenter vmFolder directly
-            vm_folder = self.datacenter_obj.vmFolder
-        # Use the resource pool of the host/cluster where the template is located
-        resource_pool = template_vm.resourcePool or self.resource_pool
-        relocate_spec = vim.vm.RelocateSpec(pool=resource_pool, datastore=self.datastore_obj)
-        clone_spec = vim.vm.CloneSpec(powerOn=False, template=False, location=relocate_spec)
-        try:
-            task = template_vm.Clone(folder=vm_folder, name=new_name, spec=clone_spec)
-            while task.info.state not in [vim.TaskInfo.State.success, vim.TaskInfo.State.error]:
-                continue
-            if task.info.state == vim.TaskInfo.State.error:
-                raise task.info.error
-        except Exception as e:
-            logging.error(f"Failed to clone virtual machine: {e}")
-            raise
-        logging.info(f"Cloned virtual machine {template_name} to new VM: {new_name}")
-        return f"VM '{new_name}' cloned from '{template_name}'."
+        """Clone a VM using ovftool (ESXi-compatible; CloneVM_Task requires vCenter)."""
+        import shutil
+        import subprocess
 
+        ovftool_path = shutil.which("ovftool")
+        if not ovftool_path:
+            raise RuntimeError(
+                "ovftool not found on PATH. Install VMware ovftool and ensure it is "
+                "accessible to the server process. See Dockerfile comments for details."
+            )
+
+        source_url = (
+            f"vi://{self.config.vcenter_user}:{self.config.vcenter_password}"
+            f"@{self.config.esxi_host}/{template_name}"
+        )
+        dest_url = (
+            f"vi://{self.config.vcenter_user}:{self.config.vcenter_password}"
+            f"@{self.config.esxi_host}/{new_name}"
+        )
+
+        cmd = [
+            ovftool_path,
+            "--noSSLVerify",
+            f"--name={new_name}",
+            source_url,
+            dest_url,
+        ]
+
+        logging.info(f"Cloning VM '{template_name}' to '{new_name}' via ovftool")
+        try:
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=600,
+            )
+        except subprocess.TimeoutExpired:
+            raise Exception(f"ovftool clone timed out after 600s for VM '{template_name}'")
+
+        if result.returncode != 0:
+            logging.error(f"ovftool stderr: {result.stderr}")
+            raise Exception(f"ovftool clone failed (exit {result.returncode}): {result.stderr.strip()}")
+
+        logging.info(f"Cloned VM '{template_name}' to '{new_name}' via ovftool")
+        return f"VM '{new_name}' cloned from '{template_name}'."
     def create_vm_custom(self, name: str, cpus: int, memory_mb: int, disk_size_gb: int = 10,
                         guest_id: str = "otherGuest", datastore: Optional[str] = None,
                         network: Optional[str] = None, thin_provisioned: bool = True,
