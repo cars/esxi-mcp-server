@@ -44,7 +44,7 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 02-01-PLAN.md — Remove list_datastore_clusters from vmware_manager.py, mcp_server.py, and tools.py
+- [x] 02-01-PLAN.md — Remove list_datastore_clusters from vmware_manager.py, mcp_server.py, and tools.py
 - [ ] 02-02-PLAN.md — Rewrite create_vm, clone_vm, create_vm_custom to use ESXi host folder and ContainerView lookups
 - [ ] 02-03-PLAN.md — Rewrite deploy_ovf and deploy_ova to use ESXi-compatible datastore/resource pool/folder patterns
 - [ ] 02-04-PLAN.md — Fix upload_file_to_datastore dcPath and simplify _build_traversal_spec for ESXi
@@ -79,6 +79,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Audit | 1/1 | Complete | 2026-03-02 |
-| 2. Tool Changes | 0/4 | Not started | - |
+| 2. Tool Changes | 1/4 | In progress | - |
 | 3. Code and Config Rename | 0/TBD | Not started | - |
 | 4. Documentation | 0/TBD | Not started | - |

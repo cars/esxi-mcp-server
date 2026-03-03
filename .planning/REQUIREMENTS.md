@@ -12,7 +12,7 @@
 
 ### Tool Removal
 
-- [ ] **RMVL-01**: `list_datastore_clusters` tool removed — vCenter-only StoragePod concept, no ESXi equivalent
+- [x] **RMVL-01**: `list_datastore_clusters` tool removed — vCenter-only StoragePod concept, no ESXi equivalent
 
 ### Tool Rewrites
 
@@ -74,7 +74,7 @@
 |-------------|-------|--------|
 | AUDIT-01 | Phase 1 | Complete |
 | AUDIT-02 | Phase 1 | Complete |
-| RMVL-01 | Phase 2 | Pending |
+| RMVL-01 | Phase 2 | Complete |
 | RWRT-01 | Phase 2 | Pending |
 | RWRT-02 | Phase 2 | Pending |
 | RWRT-03 | Phase 2 | Pending |
@@ -100,4 +100,4 @@
 
 ---
 *Requirements defined: 2026-03-02*
-*Last updated: 2026-03-02 after Phase 1 plan 01 completion*
+*Last updated: 2026-03-03 after Phase 2 plan 01 completion*
