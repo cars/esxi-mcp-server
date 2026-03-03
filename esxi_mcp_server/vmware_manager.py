@@ -935,7 +935,7 @@ class VMwareManager:
             vm, creds, remote_file_path, file_attribute, len(file_data), True)
         
         # Fix the URL (replace wildcard with actual host)
-        url = re.sub(r"^https://\*:", f"https://{self.config.vcenter_host}:", url)
+        url = re.sub(r"^https://\*:", f"https://{self.config.esxi_host}:", url)
         
         # Upload the file
         resp = requests.put(url, data=file_data, verify=False)
@@ -975,7 +975,7 @@ class VMwareManager:
             # If upload returns HTTP 404, try removing this key entirely (ESXi may not require dcPath).
             "dcPath": "ha-datacenter"
         }
-        http_url = f"https://{self.config.vcenter_host}:443{resource}"
+        http_url = f"https://{self.config.esxi_host}:443{resource}"
         
         # Get the session cookie
         client_cookie = self.si._stub.cookie
@@ -1073,7 +1073,7 @@ class VMwareManager:
         
         if lease.state == vim.HttpNfcLease.State.ready:
             # Upload VMDK
-            url = lease.info.deviceUrl[0].url.replace('*', self.config.vcenter_host)
+            url = lease.info.deviceUrl[0].url.replace('*', self.config.esxi_host)
             
             def keep_lease_alive(lease_obj):
                 while lease_obj.state not in [vim.HttpNfcLease.State.done, vim.HttpNfcLease.State.error]:
@@ -1225,7 +1225,7 @@ class VMwareManager:
                             break
                     
                     if device_url:
-                        url = device_url.url.replace('*', self.config.vcenter_host)
+                        url = device_url.url.replace('*', self.config.esxi_host)
                         
                         # Get file size
                         file_size = member.size

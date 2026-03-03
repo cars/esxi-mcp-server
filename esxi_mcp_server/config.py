@@ -9,7 +9,7 @@ from typing import Optional
 @dataclass
 class Config:
     """Configuration data class for storing configuration options."""
-    vcenter_host: str
+    esxi_host: str
     vcenter_user: str
     vcenter_password: str
     datacenter: Optional[str] = None   # Datacenter name (optional)
@@ -52,7 +52,7 @@ def load_config(config_path: Optional[str] = None) -> Config:
     
     # Override configuration from environment variables (higher priority than file)
     env_map = {
-        "VCENTER_HOST": "vcenter_host",
+        "VCENTER_HOST": "esxi_host",
         "VCENTER_USER": "vcenter_user",
         "VCENTER_PASSWORD": "vcenter_password",
         "VCENTER_DATACENTER": "datacenter",
@@ -75,7 +75,7 @@ def load_config(config_path: Optional[str] = None) -> Config:
                 config_data[cfg_key] = val
     
     # Validate required keys
-    required_keys = ["vcenter_host", "vcenter_user", "vcenter_password"]
+    required_keys = ["esxi_host", "vcenter_user", "vcenter_password"]
     for k in required_keys:
         if k not in config_data or not config_data[k]:
             raise Exception(f"Missing required configuration item: {k}")
