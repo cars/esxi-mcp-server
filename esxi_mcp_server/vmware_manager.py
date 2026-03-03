@@ -1021,19 +1021,22 @@ class VMwareManager:
         datastore = self.datastore_obj
         if datastore_name:
             datastore = None
-            for ds in self.datacenter_obj.datastoreFolder.childEntity:
-                if isinstance(ds, vim.Datastore) and ds.name == datastore_name:
+            container = self.content.viewManager.CreateContainerView(
+                self.content.rootFolder, [vim.Datastore], True)
+            for ds in container.view:
+                if ds.name == datastore_name:
                     datastore = ds
                     break
+            container.Destroy()
             if not datastore:
                 raise Exception(f"Datastore '{datastore_name}' not found")
-        
+
         # Determine resource pool
         resource_pool = self.resource_pool
         if resource_pool_name:
             # Search for specific resource pool
             container = self.content.viewManager.CreateContainerView(
-                self.datacenter_obj, [vim.ResourcePool], True)
+                self.content.rootFolder, [vim.ResourcePool], True)
             for rp in container.view:
                 if rp.name == resource_pool_name:
                     resource_pool = rp
@@ -1055,9 +1058,10 @@ class VMwareManager:
             raise Exception(f"OVF import spec errors: {', '.join(errors)}")
         
         # Import the VApp
+        host_system = self.content.rootFolder.childEntity[0].host[0]
         lease = resource_pool.ImportVApp(
-            import_spec.importSpec, self.datacenter_obj.vmFolder)
-        
+            import_spec.importSpec, host_system.vm)
+
         # Wait for lease to be ready
         while lease.state == vim.HttpNfcLease.State.initializing:
             sleep(1)
