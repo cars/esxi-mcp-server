@@ -19,7 +19,7 @@
 - [x] **RWRT-01**: `create_vm` rewritten to use ESXi host folder (`host.vm`) instead of datacenter `vmFolder`, and host resource pool instead of cluster resource pool
 - [x] **RWRT-02**: `clone_vm` rewritten to use ESXi-compatible folder and resource pool placement (no datacenter/cluster objects)
 - [x] **RWRT-03**: `create_vm_custom` rewritten to use ESXi-compatible placement (host folder + host resource pool)
-- [ ] **RWRT-04**: `deploy_ovf` and `deploy_ova` verified to work on standalone ESXi; datacenter/cluster references removed from OVF manager calls
+- [x] **RWRT-04**: `deploy_ovf` and `deploy_ova` verified to work on standalone ESXi; datacenter/cluster references removed from OVF manager calls
 - [ ] **RWRT-05**: Any remaining tools that reference `datacenter`, `cluster`, or `ComputeResource` objects updated to use ESXi-compatible equivalents
 
 ### Configuration
@@ -78,7 +78,7 @@
 | RWRT-01 | Phase 2 | Complete |
 | RWRT-02 | Phase 2 | Complete |
 | RWRT-03 | Phase 2 | Complete |
-| RWRT-04 | Phase 2 | Pending |
+| RWRT-04 | Phase 2 | Complete |
 | RWRT-05 | Phase 2 | Pending |
 | CONF-01 | Phase 3 | Pending |
 | CONF-02 | Phase 3 | Pending |

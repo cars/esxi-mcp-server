@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: in_progress
-last_updated: "2026-03-03T07:16:08Z"
+status: unknown
+last_updated: "2026-03-03T07:21:33.677Z"
 progress:
-  total_phases: 4
+  total_phases: 2
   completed_phases: 1
   total_plans: 5
-  completed_plans: 3
+  completed_plans: 4
 ---
 
 # Project State
@@ -23,9 +23,9 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 ## Current Position
 
 Phase: 2 of 4 (Tool Changes)
-Plan: 2 of 4 in current phase (02-02 complete)
+Plan: 3 of 4 in current phase (02-03 complete)
 Status: Phase 2 in progress
-Last activity: 2026-03-03 — Phase 2 plan 02 complete; create_vm, clone_vm, create_vm_custom rewritten for ESXi
+Last activity: 2026-03-03 — Phase 2 plan 03 complete; deploy_ovf, deploy_ova rewritten for ESXi
 
 Progress: [█████░░░░░] 50%
 
@@ -41,10 +41,10 @@ Progress: [█████░░░░░] 50%
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-audit | 1 | 2min | 2min |
-| 02-tool-changes | 2 | 3min | 1.5min |
+| 02-tool-changes | 3 | 5min | 1.7min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (2min), 02-01 (1min), 02-02 (2min)
+- Last 5 plans: 01-01 (2min), 02-01 (1min), 02-02 (2min), 02-03 (2min)
 - Trend: -
 
 *Updated after each plan completion*
@@ -68,6 +68,7 @@ Recent decisions affecting current work:
 - ESXi VM folder pattern: host_system = self.content.rootFolder.childEntity[0].host[0]; vm_folder = host_system.vm
 - ESXi datastore/network lookups use CreateContainerView(rootFolder, ...) — same pattern as list_datastores/list_networks
 - ContainerView Destroy() called after every use to prevent vSphere server-side resource leaks
+- [Phase 02-tool-changes]: vcenter_host references in deploy_ovf/deploy_ova left for plan 02-04 config rename; deploy methods use host_system.vm as ImportVApp folder arg
 
 ### Pending Todos
 
@@ -80,5 +81,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-03
-Stopped at: Completed 02-tool-changes-02-02-PLAN.md — create_vm, clone_vm, create_vm_custom ESXi-compatible
+Stopped at: Completed 02-tool-changes-02-03-PLAN.md — deploy_ovf, deploy_ova ESXi-compatible
 Resume file: None
