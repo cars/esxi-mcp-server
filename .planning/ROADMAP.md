@@ -12,7 +12,7 @@ The project pivots from a vCenter-centric MCP server to one that works exclusive
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Audit** - Classify all 31 MCP tools and document ESXi vs vCenter API differences
+- [x] **Phase 1: Audit** - Classify all 31 MCP tools and document ESXi vs vCenter API differences
 - [ ] **Phase 2: Tool Changes** - Remove vCenter-only tools and rewrite tools that use vCenter-specific API objects
 - [ ] **Phase 3: Code and Config Rename** - Rename config keys, method names, and internal references from vCenter to ESXi
 - [ ] **Phase 4: Documentation** - Update all user-facing documentation to reflect the standalone ESXi pivot
@@ -30,7 +30,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 1 plan
 
 Plans:
-- [ ] 01-01-PLAN.md — Verify tool classifications against live source and produce complete AUDIT.md with classification table and rewrite specs
+- [x] 01-01-PLAN.md — Verify tool classifications against live source and produce complete AUDIT.md with classification table and rewrite specs
 
 ### Phase 2: Tool Changes
 **Goal**: Every MCP tool exposed by the server either works correctly against a standalone ESXi host or has been removed
@@ -72,7 +72,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Audit | 0/1 | Not started | - |
+| 1. Audit | 1/1 | Complete | 2026-03-02 |
 | 2. Tool Changes | 0/TBD | Not started | - |
 | 3. Code and Config Rename | 0/TBD | Not started | - |
 | 4. Documentation | 0/TBD | Not started | - |

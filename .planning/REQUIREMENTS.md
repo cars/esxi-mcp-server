@@ -7,8 +7,8 @@
 
 ### Audit
 
-- [ ] **AUDIT-01**: All 31 MCP tools classified as ESXi-compatible, needs-rewrite, or vCenter-only-remove
-- [ ] **AUDIT-02**: pyVmomi API differences documented for each tool requiring rewrite (vCenter objects → ESXi equivalents)
+- [x] **AUDIT-01**: All 31 MCP tools classified as ESXi-compatible, needs-rewrite, or vCenter-only-remove
+- [x] **AUDIT-02**: pyVmomi API differences documented for each tool requiring rewrite (vCenter objects → ESXi equivalents)
 
 ### Tool Removal
 
@@ -72,8 +72,8 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| AUDIT-01 | Phase 1 | Pending |
-| AUDIT-02 | Phase 1 | Pending |
+| AUDIT-01 | Phase 1 | Complete |
+| AUDIT-02 | Phase 1 | Complete |
 | RMVL-01 | Phase 2 | Pending |
 | RWRT-01 | Phase 2 | Pending |
 | RWRT-02 | Phase 2 | Pending |
@@ -100,4 +100,4 @@
 
 ---
 *Requirements defined: 2026-03-02*
-*Last updated: 2026-03-02 after roadmap creation*
+*Last updated: 2026-03-02 after Phase 1 plan 01 completion*

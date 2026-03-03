@@ -10,27 +10,27 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 ## Current Position
 
 Phase: 1 of 4 (Audit)
-Plan: 0 of TBD in current phase
-Status: Ready to plan
-Last activity: 2026-03-02 — Roadmap created; ready to begin Phase 1 planning
+Plan: 1 of 1 in current phase
+Status: Phase 1 complete
+Last activity: 2026-03-02 — Phase 1 plan 01 complete; AUDIT.md produced
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [██░░░░░░░░] 25%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 0
-- Average duration: -
-- Total execution time: 0 hours
+- Total plans completed: 1
+- Average duration: 2min
+- Total execution time: 0.03 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| - | - | - | - |
+| 01-audit | 1 | 2min | 2min |
 
 **Recent Trend:**
-- Last 5 plans: none yet
+- Last 5 plans: 01-01 (2min)
 - Trend: -
 
 *Updated after each plan completion*
@@ -46,6 +46,10 @@ Recent decisions affecting current work:
 - Remove vCenter-only tools entirely: Cleaner than returning "not supported" errors
 - Rename VCENTER_* config keys to ESXI_*: User-facing clarity, no compatibility burden
 - Breaking changes acceptable: Greenfield usage, no backwards compat needed
+- Init-cached objects (self.resource_pool, self.datastore_obj, self.network_obj) are NOT needs-rewrite in tool methods — fixed by Phase 3 _connect_vcenter() rewrite
+- list_datastore_clusters classified vCenter-only-remove (vim.StoragePod has no ESXi equivalent)
+- deploy_ovf and deploy_ova have 3 datacenter references each (datastoreFolder, ContainerView, ImportVApp vmFolder)
+- Phase 2 implementors must decide whether to rename vcenter_host config key in Phase 2 or defer to Phase 3
 
 ### Pending Todos
 
@@ -58,5 +62,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Roadmap created — ready to run /gsd:plan-phase 1
+Stopped at: Completed 01-audit-01-PLAN.md — AUDIT.md produced, Phase 1 complete
 Resume file: None
