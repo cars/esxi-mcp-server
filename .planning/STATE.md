@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-03T14:11:15.357Z"
+last_updated: "2026-03-03T22:40:59.562Z"
 progress:
   total_phases: 2
   completed_phases: 2
-  total_plans: 6
-  completed_plans: 6
+  total_plans: 8
+  completed_plans: 8
 ---
 
 # Project State
@@ -23,11 +23,11 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 ## Current Position
 
 Phase: 2 of 4 (Tool Changes)
-Plan: 5 of 5 in current phase (02-05 complete)
-Status: Phase 2 complete
-Last activity: 2026-03-03 — Phase 2 plan 05 complete; fix vcenter_host AttributeError in _connect_vcenter (RWRT-05 gap closed)
+Plan: 6 of 7 in current phase (02-06 complete)
+Status: In progress (gap closure plans)
+Last activity: 2026-03-03 — Phase 2 plan 06 complete; host traversal bug fixed in create_vm, create_vm_custom, deploy_ovf, deploy_ova (RWRT-01, RWRT-03, RWRT-04 closed)
 
-Progress: [██████░░░░] 62%
+Progress: [███████░░░] 70%
 
 ## Performance Metrics
 
@@ -41,10 +41,10 @@ Progress: [██████░░░░] 62%
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-audit | 1 | 2min | 2min |
-| 02-tool-changes | 5 | 7min | 1.4min |
+| 02-tool-changes | 6 | 9min | 1.5min |
 
 **Recent Trend:**
-- Last 5 plans: 02-01 (1min), 02-02 (2min), 02-03 (2min), 02-04 (1min), 02-05 (1min)
+- Last 6 plans: 02-01 (1min), 02-02 (2min), 02-03 (2min), 02-04 (1min), 02-05 (1min), 02-06 (2min)
 - Trend: -
 
 *Updated after each plan completion*
@@ -74,6 +74,11 @@ Recent decisions affecting current work:
 - Config.vcenter_host renamed to Config.esxi_host; VCENTER_HOST env var preserved for backward compat
 - vcenter_user and vcenter_password renames deferred to Phase 3 (_connect_vcenter rewrite)
 - [02-05]: _connect_vcenter() SmartConnect calls now use self.config.esxi_host at lines 47+54; AttributeError on startup is closed; two-line targeted fix only
+- [Phase 02-tool-changes]: self.compute_resource stored in _connect_vcenter for clean access by create_vm, create_vm_custom, deploy_ovf, deploy_ova
+- [Phase 02-tool-changes]: ESXi host traversal: always self.compute_resource.host[0], never rootFolder.childEntity[0].host[0]
+- [Phase 02-tool-changes]: VM placement folder: always self.datacenter_obj.vmFolder (vim.Folder), never host_system.vm (VirtualMachine[] list)
+- [Phase 02-tool-changes]: clone_vm rewritten to use ovftool vi:// subprocess; CloneVM_Task removed (vCenter-only API)
+- [Phase 02-tool-changes]: ovftool PATH check via shutil.which; raises RuntimeError with install instructions if absent
 
 ### Pending Todos
 
@@ -86,5 +91,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-03
-Stopped at: Completed 02-tool-changes-02-05-PLAN.md — Phase 2 complete (RWRT-05 gap closed: vcenter_host AttributeError fixed in _connect_vcenter)
+Stopped at: Completed 02-tool-changes-02-06-PLAN.md — host traversal bug fixed in 4 VM creation methods (RWRT-01, RWRT-03, RWRT-04 closed)
 Resume file: None
