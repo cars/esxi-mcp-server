@@ -13,7 +13,7 @@ The project pivots from a vCenter-centric MCP server to one that works exclusive
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Audit** - Classify all 31 MCP tools and document ESXi vs vCenter API differences
-- [x] **Phase 2: Tool Changes** - Remove vCenter-only tools and rewrite tools that use vCenter-specific API objects (completed 2026-03-03)
+- [ ] **Phase 2: Tool Changes** - Remove vCenter-only tools and rewrite tools that use vCenter-specific API objects (gap closure in progress)
 - [ ] **Phase 3: Code and Config Rename** - Rename config keys, method names, and internal references from vCenter to ESXi
 - [ ] **Phase 4: Documentation** - Update all user-facing documentation to reflect the standalone ESXi pivot
 
@@ -38,17 +38,20 @@ Plans:
 **Requirements**: RMVL-01, RWRT-01, RWRT-02, RWRT-03, RWRT-04, RWRT-05
 **Success Criteria** (what must be TRUE):
   1. `list_datastore_clusters` tool no longer exists in the server's tool registry
-  2. `create_vm`, `clone_vm`, and `create_vm_custom` use host folder and host resource pool — no datacenter or cluster objects referenced
-  3. `deploy_ovf` and `deploy_ova` complete successfully when pointed at a standalone ESXi host
-  4. No remaining tool in vmware_manager.py, mcp_server.py, or tools.py references `vim.Datacenter`, `vim.ClusterComputeResource`, or `vim.dvs.*` objects
-**Plans**: 5 plans
+  2. `create_vm` and `create_vm_custom` use host resource pool and datacenter vmFolder — no wrong childEntity[0].host traversal
+  3. `clone_vm` tool removed — CloneVM_Task is vCenter-only, no ESXi equivalent
+  4. `deploy_ovf` and `deploy_ova` complete successfully when pointed at a standalone ESXi host
+  5. No remaining tool in vmware_manager.py, mcp_server.py, or tools.py references `vim.Datacenter`, `vim.ClusterComputeResource`, or `vim.dvs.*` objects
+**Plans**: 7 plans
 
 Plans:
 - [x] 02-01-PLAN.md — Remove list_datastore_clusters from vmware_manager.py, mcp_server.py, and tools.py
 - [x] 02-02-PLAN.md — Rewrite create_vm, clone_vm, create_vm_custom to use ESXi host folder and ContainerView lookups
 - [x] 02-03-PLAN.md — Rewrite deploy_ovf and deploy_ova to use ESXi-compatible datastore/resource pool/folder patterns
 - [x] 02-04-PLAN.md — Fix upload_file_to_datastore dcPath and simplify _build_traversal_spec for ESXi
-- [ ] 02-05-PLAN.md — Gap closure: fix _connect_vcenter() to reference self.config.esxi_host (two-line fix, RWRT-05)
+- [x] 02-05-PLAN.md — Gap closure: fix _connect_vcenter() to reference self.config.esxi_host (two-line fix, RWRT-05)
+- [ ] 02-06-PLAN.md — Gap closure: fix wrong host traversal in create_vm, create_vm_custom, deploy_ovf, deploy_ova (store self.compute_resource; use datacenter_obj.vmFolder)
+- [ ] 02-07-PLAN.md — Gap closure: remove clone_vm entirely (CloneVM_Task is vCenter-only, always NotSupported on ESXi)
 
 ### Phase 3: Code and Config Rename
 **Goal**: All internal identifiers — config keys, environment variables, method names, comments, and log messages — use ESXi terminology instead of vCenter
@@ -80,6 +83,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Audit | 1/1 | Complete | 2026-03-02 |
-| 2. Tool Changes | 5/5 | Complete    | 2026-03-03 |
+| 2. Tool Changes | 5/7 | Gap closure | - |
 | 3. Code and Config Rename | 0/TBD | Not started | - |
 | 4. Documentation | 0/TBD | Not started | - |
