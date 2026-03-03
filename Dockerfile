@@ -32,8 +32,17 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
+# ovftool (required for clone_vm tool)
+# ovftool is a proprietary VMware binary and cannot be bundled automatically.
+# Download from: https://developer.broadcom.com/tools/vmware-ovf-tool/latest
+# To include in this image, copy the binary into the build context and add:
+#   COPY ovftool /usr/local/bin/ovftool
+#   RUN chmod +x /usr/local/bin/ovftool
+# Without ovftool, clone_vm will return a RuntimeError explaining the requirement.
+
 # Copy Python packages from builder stage
 COPY --from=builder /root/.local /home/mcpuser/.local
+COPY  ./esxi_mcp_server  /home/mcpuser/.local/lib/python3.11/site-packages/esxi_mcp_server
 
 # Copy application code
 COPY server.py .
