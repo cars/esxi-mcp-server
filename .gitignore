@@ -38,6 +38,7 @@ logs/
 # Config
 config.yaml
 config.json
+!.planning/config.json
 
 # OS
 .DS_Store
