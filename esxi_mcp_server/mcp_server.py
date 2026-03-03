@@ -143,11 +143,6 @@ def register_handlers(mcp_server: Server, tool_handlers: ToolHandlers):
             description="List all datastores with their details",
             inputSchema={"type": "object", "properties": {}}
         ),
-        "list_datastore_clusters": types.Tool(
-            name="list_datastore_clusters",
-            description="List all datastore clusters (StoragePods) with their datastores",
-            inputSchema={"type": "object", "properties": {}}
-        ),
         "list_networks": types.Tool(
             name="list_networks",
             description="List all networks",
@@ -371,7 +366,6 @@ def register_handlers(mcp_server: Server, tool_handlers: ToolHandlers):
         "create_vm_custom": lambda args: tool_handlers.create_vm_custom(**args),
         "list_templates": lambda args: tool_handlers.list_templates(),
         "list_datastores": lambda args: tool_handlers.list_datastores(),
-        "list_datastore_clusters": lambda args: tool_handlers.list_datastore_clusters(),
         "list_networks": lambda args: tool_handlers.list_networks(),
         "list_hosts": lambda args: tool_handlers.list_hosts(),
         "get_host_details": lambda args: tool_handlers.get_host_details(**args),

@@ -86,11 +86,6 @@ class ToolHandlers:
         self._check_auth()
         return self.manager.list_datastores()
     
-    def list_datastore_clusters(self) -> list:
-        """List all datastore clusters (StoragePods)."""
-        self._check_auth()
-        return self.manager.list_datastore_clusters()
-    
     def list_networks(self) -> list:
         """List all networks."""
         self._check_auth()

@@ -679,22 +679,6 @@ class VMwareManager:
         logging.info(f"Virtual machine powered off: {name}")
         return f"VM '{name}' powered off."
 
-    def list_datastore_clusters(self) -> list:
-        """List all datastore clusters (StoragePods)."""
-        clusters = []
-        container = self.content.viewManager.CreateContainerView(
-            self.content.rootFolder, [vim.StoragePod], True)
-        for pod in container.view:
-            cluster_info = {
-                "name": pod.name,
-                "capacity_gb": round(pod.summary.capacity / (1024**3), 2) if pod.summary else 0,
-                "free_space_gb": round(pod.summary.freeSpace / (1024**3), 2) if pod.summary else 0,
-                "datastores": [ds.name for ds in pod.childEntity if isinstance(ds, vim.Datastore)]
-            }
-            clusters.append(cluster_info)
-        container.Destroy()
-        return clusters
-
     def wait_for_task(self, task: vim.Task, timeout: int = 300) -> Dict[str, Any]:
         """Wait for a vCenter task to complete or timeout."""
         import time
