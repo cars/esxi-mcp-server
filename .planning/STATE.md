@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-last_updated: "2026-03-03T07:11:41Z"
+last_updated: "2026-03-03T07:16:08Z"
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 5
-  completed_plans: 2
+  completed_plans: 3
 ---
 
 # Project State
@@ -23,11 +23,11 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 ## Current Position
 
 Phase: 2 of 4 (Tool Changes)
-Plan: 1 of 4 in current phase (02-01 complete)
+Plan: 2 of 4 in current phase (02-02 complete)
 Status: Phase 2 in progress
-Last activity: 2026-03-03 — Phase 2 plan 01 complete; list_datastore_clusters removed
+Last activity: 2026-03-03 — Phase 2 plan 02 complete; create_vm, clone_vm, create_vm_custom rewritten for ESXi
 
-Progress: [████░░░░░░] 40%
+Progress: [█████░░░░░] 50%
 
 ## Performance Metrics
 
@@ -41,10 +41,10 @@ Progress: [████░░░░░░] 40%
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-audit | 1 | 2min | 2min |
-| 02-tool-changes | 1 | 1min | 1min |
+| 02-tool-changes | 2 | 3min | 1.5min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (2min), 02-01 (1min)
+- Last 5 plans: 01-01 (2min), 02-01 (1min), 02-02 (2min)
 - Trend: -
 
 *Updated after each plan completion*
@@ -65,6 +65,9 @@ Recent decisions affecting current work:
 - deploy_ovf and deploy_ova have 3 datacenter references each (datastoreFolder, ContainerView, ImportVApp vmFolder)
 - Phase 2 implementors must decide whether to rename vcenter_host config key in Phase 2 or defer to Phase 3
 - list_datastore_clusters deleted entirely (not stubbed); vim.StoragePod has no ESXi equivalent so stub would always return empty and mislead users
+- ESXi VM folder pattern: host_system = self.content.rootFolder.childEntity[0].host[0]; vm_folder = host_system.vm
+- ESXi datastore/network lookups use CreateContainerView(rootFolder, ...) — same pattern as list_datastores/list_networks
+- ContainerView Destroy() called after every use to prevent vSphere server-side resource leaks
 
 ### Pending Todos
 
@@ -77,5 +80,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-03
-Stopped at: Completed 02-tool-changes-02-01-PLAN.md — list_datastore_clusters removed, tool count now 30
+Stopped at: Completed 02-tool-changes-02-02-PLAN.md — create_vm, clone_vm, create_vm_custom ESXi-compatible
 Resume file: None
