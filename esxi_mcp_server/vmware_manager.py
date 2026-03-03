@@ -44,14 +44,14 @@ class VMwareManager:
                 context.check_hostname = False  # Disable hostname checking
                 context.verify_mode = ssl.CERT_NONE
                 self.si = connect.SmartConnect(
-                    host=self.config.vcenter_host,
+                    host=self.config.esxi_host,
                     user=self.config.vcenter_user,
                     pwd=self.config.vcenter_password,
                     sslContext=context)
             else:
                 # Standard SSL verification connection
                 self.si = connect.SmartConnect(
-                    host=self.config.vcenter_host,
+                    host=self.config.esxi_host,
                     user=self.config.vcenter_user,
                     pwd=self.config.vcenter_password)
         except Exception as e:
