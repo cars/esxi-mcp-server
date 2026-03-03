@@ -971,7 +971,9 @@ class VMwareManager:
         resource = "/folder" + remote_file_path
         params = {
             "dsName": datastore.name,
-            "dcPath": self.datacenter_obj.name
+            # ESXi uses "ha-datacenter" as its built-in pseudo-datacenter name.
+            # If upload returns HTTP 404, try removing this key entirely (ESXi may not require dcPath).
+            "dcPath": "ha-datacenter"
         }
         http_url = f"https://{self.config.vcenter_host}:443{resource}"
         
@@ -1340,39 +1342,21 @@ class VMwareManager:
             pc_filter.Destroy()
 
     def _build_traversal_spec(self):
-        """Build traversal spec for property collector."""
+        """Build traversal spec for property collector (ESXi-compatible).
+
+        On ESXi, rootFolder directly contains vim.ComputeResource (no vim.Datacenter wrapper).
+        The folderToChild traversal on rootFolder is sufficient.
+        NOTE: If wait_for_updates returns empty results on live ESXi, a cr_to_host
+        TraversalSpec for vim.ComputeResource -> host may need to be added.
+        """
         from pyVmomi import vmodl
-        
-        # Traversal spec for folders
+
         folder_to_child = vmodl.query.PropertyCollector.TraversalSpec(
             name='folderToChild',
             type=vim.Folder,
             path='childEntity',
-            skip=False
-        )
-        
-        # Traversal spec for datacenter to VM folder
-        dc_to_vmfolder = vmodl.query.PropertyCollector.TraversalSpec(
-            name='dcToVmFolder',
-            type=vim.Datacenter,
-            path='vmFolder',
             skip=False,
             selectSet=[vmodl.query.PropertyCollector.SelectionSpec(name='folderToChild')]
         )
-        
-        # Traversal spec for datacenter to host folder
-        dc_to_hostfolder = vmodl.query.PropertyCollector.TraversalSpec(
-            name='dcToHostFolder',
-            type=vim.Datacenter,
-            path='hostFolder',
-            skip=False,
-            selectSet=[vmodl.query.PropertyCollector.SelectionSpec(name='folderToChild')]
-        )
-        
-        folder_to_child.selectSet = [
-            vmodl.query.PropertyCollector.SelectionSpec(name='folderToChild'),
-            vmodl.query.PropertyCollector.SelectionSpec(name='dcToVmFolder'),
-            vmodl.query.PropertyCollector.SelectionSpec(name='dcToHostFolder')
-        ]
-        
-        return [folder_to_child, dc_to_vmfolder, dc_to_hostfolder]
+
+        return [folder_to_child]
