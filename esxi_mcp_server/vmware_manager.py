@@ -538,9 +538,8 @@ class VMwareManager:
             raise Exception(f"Template virtual machine {template_name} not found")
         vm_folder = template_vm.parent  # Place the new VM in the same folder as the template
         if not isinstance(vm_folder, vim.Folder):
-            # ESXi fallback: use host's vm folder directly (no datacenter object)
-            host_system = self.content.rootFolder.childEntity[0].host[0]
-            vm_folder = host_system.vm
+            # ESXi fallback: use datacenter vmFolder directly
+            vm_folder = self.datacenter_obj.vmFolder
         # Use the resource pool of the host/cluster where the template is located
         resource_pool = template_vm.resourcePool or self.resource_pool
         relocate_spec = vim.vm.RelocateSpec(pool=resource_pool, datastore=self.datastore_obj)
