@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-03T07:21:33.677Z"
+last_updated: "2026-03-03T07:26:00.000Z"
 progress:
   total_phases: 2
   completed_phases: 1
   total_plans: 5
-  completed_plans: 4
+  completed_plans: 5
 ---
 
 # Project State
@@ -23,11 +23,11 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 ## Current Position
 
 Phase: 2 of 4 (Tool Changes)
-Plan: 3 of 4 in current phase (02-03 complete)
-Status: Phase 2 in progress
-Last activity: 2026-03-03 — Phase 2 plan 03 complete; deploy_ovf, deploy_ova rewritten for ESXi
+Plan: 4 of 4 in current phase (02-04 complete)
+Status: Phase 2 complete
+Last activity: 2026-03-03 — Phase 2 plan 04 complete; dcPath, traversal spec, config rename (RWRT-05)
 
-Progress: [█████░░░░░] 50%
+Progress: [██████░░░░] 62%
 
 ## Performance Metrics
 
@@ -41,10 +41,10 @@ Progress: [█████░░░░░] 50%
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-audit | 1 | 2min | 2min |
-| 02-tool-changes | 3 | 5min | 1.7min |
+| 02-tool-changes | 4 | 6min | 1.5min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (2min), 02-01 (1min), 02-02 (2min), 02-03 (2min)
+- Last 5 plans: 01-01 (2min), 02-01 (1min), 02-02 (2min), 02-03 (2min), 02-04 (1min)
 - Trend: -
 
 *Updated after each plan completion*
@@ -69,6 +69,10 @@ Recent decisions affecting current work:
 - ESXi datastore/network lookups use CreateContainerView(rootFolder, ...) — same pattern as list_datastores/list_networks
 - ContainerView Destroy() called after every use to prevent vSphere server-side resource leaks
 - [Phase 02-tool-changes]: vcenter_host references in deploy_ovf/deploy_ova left for plan 02-04 config rename; deploy methods use host_system.vm as ImportVApp folder arg
+- ha-datacenter literal used for dcPath in upload_file_to_datastore (ESXi built-in pseudo-datacenter name)
+- _build_traversal_spec simplified to folder_to_child only (ESXi has no vim.Datacenter in object tree)
+- Config.vcenter_host renamed to Config.esxi_host; VCENTER_HOST env var preserved for backward compat
+- vcenter_user and vcenter_password renames deferred to Phase 3 (_connect_vcenter rewrite)
 
 ### Pending Todos
 
@@ -81,5 +85,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-03
-Stopped at: Completed 02-tool-changes-02-03-PLAN.md — deploy_ovf, deploy_ova ESXi-compatible
+Stopped at: Completed 02-tool-changes-02-04-PLAN.md — Phase 2 complete (RWRT-05: dcPath, traversal spec, config rename)
 Resume file: None
