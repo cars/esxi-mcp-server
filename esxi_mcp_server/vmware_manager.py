@@ -94,6 +94,7 @@ class VMwareManager:
         if not compute_resource:
             raise Exception("No compute resource (cluster or host) found")
         self.resource_pool = compute_resource.resourcePool
+        self.compute_resource = compute_resource
         logging.info(f"Using resource pool: {self.resource_pool.name}")
 
         # Retrieve datastore object
