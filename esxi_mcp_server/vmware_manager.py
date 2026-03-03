@@ -514,9 +514,9 @@ class VMwareManager:
 
         vm_spec.deviceChange = device_specs
 
-        # Get the folder in which to place the VM (ESXi: use host's vm folder directly)
-        host_system = self.content.rootFolder.childEntity[0].host[0]
-        vm_folder = host_system.vm
+        # Get the folder in which to place the VM (ESXi: use compute_resource host and datacenter vmFolder)
+        host_system = self.compute_resource.host[0]
+        vm_folder = self.datacenter_obj.vmFolder
         # Create the VM in the specified resource pool
         try:
             task = vm_folder.CreateVM_Task(config=vm_spec, pool=self.resource_pool)
@@ -632,9 +632,9 @@ class VMwareManager:
 
         vm_spec.deviceChange = device_specs
 
-        # Get the folder in which to place the VM (ESXi: use host's vm folder directly)
-        host_system = self.content.rootFolder.childEntity[0].host[0]
-        vm_folder = host_system.vm
+        # Get the folder in which to place the VM (ESXi: use compute_resource host and datacenter vmFolder)
+        host_system = self.compute_resource.host[0]
+        vm_folder = self.datacenter_obj.vmFolder
         try:
             task = vm_folder.CreateVM_Task(config=vm_spec, pool=self.resource_pool)
             while task.info.state not in [vim.TaskInfo.State.success, vim.TaskInfo.State.error]:
