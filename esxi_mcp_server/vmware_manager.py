@@ -447,13 +447,18 @@ class VMwareManager:
         datastore_obj = self.datastore_obj
         network_obj = self.network_obj
         if datastore:
-            datastore_obj = next((ds for ds in self.datacenter_obj.datastoreFolder.childEntity
-                                   if isinstance(ds, vim.Datastore) and ds.name == datastore), None)
+            container = self.content.viewManager.CreateContainerView(
+                self.content.rootFolder, [vim.Datastore], True)
+            datastore_obj = next(
+                (ds for ds in container.view if ds.name == datastore), None)
+            container.Destroy()
             if not datastore_obj:
                 raise Exception(f"Specified datastore {datastore} not found")
         if network:
-            networks = self.datacenter_obj.networkFolder.childEntity
-            network_obj = next((net for net in networks if net.name == network), None)
+            container = self.content.viewManager.CreateContainerView(
+                self.content.rootFolder, [vim.Network], True)
+            network_obj = next((net for net in container.view if net.name == network), None)
+            container.Destroy()
             if not network_obj:
                 raise Exception(f"Specified network {network} not found")
 
@@ -508,8 +513,9 @@ class VMwareManager:
 
         vm_spec.deviceChange = device_specs
 
-        # Get the folder in which to place the VM (default is the datacenter's vmFolder)
-        vm_folder = self.datacenter_obj.vmFolder
+        # Get the folder in which to place the VM (ESXi: use host's vm folder directly)
+        host_system = self.content.rootFolder.childEntity[0].host[0]
+        vm_folder = host_system.vm
         # Create the VM in the specified resource pool
         try:
             task = vm_folder.CreateVM_Task(config=vm_spec, pool=self.resource_pool)
@@ -557,13 +563,18 @@ class VMwareManager:
         datastore_obj = self.datastore_obj
         network_obj = self.network_obj
         if datastore:
-            datastore_obj = next((ds for ds in self.datacenter_obj.datastoreFolder.childEntity
-                                   if isinstance(ds, vim.Datastore) and ds.name == datastore), None)
+            container = self.content.viewManager.CreateContainerView(
+                self.content.rootFolder, [vim.Datastore], True)
+            datastore_obj = next(
+                (ds for ds in container.view if ds.name == datastore), None)
+            container.Destroy()
             if not datastore_obj:
                 raise Exception(f"Specified datastore {datastore} not found")
         if network:
-            networks = self.datacenter_obj.networkFolder.childEntity
-            network_obj = next((net for net in networks if net.name == network), None)
+            container = self.content.viewManager.CreateContainerView(
+                self.content.rootFolder, [vim.Network], True)
+            network_obj = next((net for net in container.view if net.name == network), None)
+            container.Destroy()
             if not network_obj:
                 raise Exception(f"Specified network {network} not found")
 
@@ -618,8 +629,9 @@ class VMwareManager:
 
         vm_spec.deviceChange = device_specs
 
-        # Get the folder in which to place the VM
-        vm_folder = self.datacenter_obj.vmFolder
+        # Get the folder in which to place the VM (ESXi: use host's vm folder directly)
+        host_system = self.content.rootFolder.childEntity[0].host[0]
+        vm_folder = host_system.vm
         try:
             task = vm_folder.CreateVM_Task(config=vm_spec, pool=self.resource_pool)
             while task.info.state not in [vim.TaskInfo.State.success, vim.TaskInfo.State.error]:
