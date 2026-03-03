@@ -1061,9 +1061,9 @@ class VMwareManager:
             raise Exception(f"OVF import spec errors: {', '.join(errors)}")
         
         # Import the VApp
-        host_system = self.content.rootFolder.childEntity[0].host[0]
+        host_system = self.compute_resource.host[0]
         lease = resource_pool.ImportVApp(
-            import_spec.importSpec, host_system.vm)
+            import_spec.importSpec, self.datacenter_obj.vmFolder, host=host_system)
 
         # Wait for lease to be ready
         while lease.state == vim.HttpNfcLease.State.initializing:
@@ -1178,9 +1178,9 @@ class VMwareManager:
             raise Exception(f"OVA import spec errors: {', '.join(errors)}")
         
         # Import the VApp
-        host_system = self.content.rootFolder.childEntity[0].host[0]
+        host_system = self.compute_resource.host[0]
         lease = resource_pool.ImportVApp(
-            import_spec.importSpec, host_system.vm)
+            import_spec.importSpec, self.datacenter_obj.vmFolder, host=host_system)
 
         # Wait for lease to be ready
         while lease.state == vim.HttpNfcLease.State.initializing:
