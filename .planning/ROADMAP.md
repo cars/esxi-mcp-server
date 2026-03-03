@@ -27,7 +27,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   1. A written classification exists for each of the 31 tools: ESXi-compatible, needs-rewrite, or vCenter-only-remove
   2. For every tool marked needs-rewrite, the specific vCenter objects used and their ESXi equivalents are documented
   3. The audit output can be referenced directly to drive Phase 2 work without requiring code re-inspection
-**Plans**: TBD
+**Plans**: 1 plan
+
+Plans:
+- [ ] 01-01-PLAN.md — Verify tool classifications against live source and produce complete AUDIT.md with classification table and rewrite specs
 
 ### Phase 2: Tool Changes
 **Goal**: Every MCP tool exposed by the server either works correctly against a standalone ESXi host or has been removed
@@ -69,7 +72,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Audit | 0/TBD | Not started | - |
+| 1. Audit | 0/1 | Not started | - |
 | 2. Tool Changes | 0/TBD | Not started | - |
 | 3. Code and Config Rename | 0/TBD | Not started | - |
 | 4. Documentation | 0/TBD | Not started | - |
