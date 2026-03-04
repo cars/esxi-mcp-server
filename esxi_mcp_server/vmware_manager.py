@@ -22,21 +22,21 @@ class VMwareManager:
         self.datastore_obj = None
         self.network_obj = None
         self.authenticated = False   # Authentication flag for API key verification
-        self._connect_vcenter()
+        self._connect_esxi()
 
     def _ensure_connected(self):
-        """Check if the vCenter session is still active and reconnect if needed."""
+        """Check if the ESXi session is still active and reconnect if needed."""
         try:
             if self.si is None:
                 raise Exception("No service instance")
             # Lightweight call to verify the session is alive
             self.si.CurrentTime()
         except Exception:
-            logging.warning("vCenter/ESXi session expired or lost, reconnecting...")
-            self._connect_vcenter()
+            logging.warning("ESXi session expired or lost, reconnecting...")
+            self._connect_esxi()
 
-    def _connect_vcenter(self):
-        """Connect to vCenter/ESXi and retrieve main resource object references."""
+    def _connect_esxi(self):
+        """Connect to ESXi and retrieve main resource object references."""
         try:
             if self.config.insecure:
                 # Connection method without SSL certificate verification
@@ -45,54 +45,33 @@ class VMwareManager:
                 context.verify_mode = ssl.CERT_NONE
                 self.si = connect.SmartConnect(
                     host=self.config.esxi_host,
-                    user=self.config.vcenter_user,
-                    pwd=self.config.vcenter_password,
+                    user=self.config.esxi_user,
+                    pwd=self.config.esxi_password,
                     sslContext=context)
             else:
                 # Standard SSL verification connection
                 self.si = connect.SmartConnect(
                     host=self.config.esxi_host,
-                    user=self.config.vcenter_user,
-                    pwd=self.config.vcenter_password)
+                    user=self.config.esxi_user,
+                    pwd=self.config.esxi_password)
         except Exception as e:
-            logging.error(f"Failed to connect to vCenter/ESXi: {e}")
+            logging.error(f"Failed to connect to ESXi: {e}")
             raise
         # Retrieve content root object
         self.content = self.si.RetrieveContent()
-        logging.info("Successfully connected to VMware vCenter/ESXi API")
+        logging.info("Successfully connected to VMware ESXi API")
 
         # Retrieve target datacenter object
-        if self.config.datacenter:
-            # Find specified datacenter by name
-            self.datacenter_obj = next((dc for dc in self.content.rootFolder.childEntity
-                                        if isinstance(dc, vim.Datacenter) and dc.name == self.config.datacenter), None)
-            if not self.datacenter_obj:
-                logging.error(f"Datacenter named {self.config.datacenter} not found")
-                raise Exception(f"Datacenter {self.config.datacenter} not found")
-        else:
-            # Default to the first available datacenter
-            self.datacenter_obj = next((dc for dc in self.content.rootFolder.childEntity
-                                        if isinstance(dc, vim.Datacenter)), None)
+        self.datacenter_obj = next((dc for dc in self.content.rootFolder.childEntity
+                                    if isinstance(dc, vim.Datacenter)), None)
         if not self.datacenter_obj:
-            raise Exception("No datacenter object found")
+            raise Exception("No datacenter found on ESXi host")
 
-        # Retrieve resource pool (if a cluster is configured, use the cluster's resource pool; otherwise, use the host resource pool)
-        compute_resource = None
-        if self.config.cluster:
-            # Find specified cluster
-            for folder in self.datacenter_obj.hostFolder.childEntity:
-                if isinstance(folder, vim.ClusterComputeResource) and folder.name == self.config.cluster:
-                    compute_resource = folder
-                    break
-            if not compute_resource:
-                logging.error(f"Cluster named {self.config.cluster} not found")
-                raise Exception(f"Cluster {self.config.cluster} not found")
-        else:
-            # Default to the first ComputeResource (cluster or standalone host)
-            compute_resource = next((cr for cr in self.datacenter_obj.hostFolder.childEntity
-                                      if isinstance(cr, vim.ComputeResource)), None)
+        # Retrieve resource pool (standalone ESXi always has exactly one ComputeResource)
+        compute_resource = next((cr for cr in self.datacenter_obj.hostFolder.childEntity
+                                  if isinstance(cr, vim.ComputeResource)), None)
         if not compute_resource:
-            raise Exception("No compute resource (cluster or host) found")
+            raise Exception("No compute resource found on ESXi host")
         self.resource_pool = compute_resource.resourcePool
         self.compute_resource = compute_resource
         logging.info(f"Using resource pool: {self.resource_pool.name}")
@@ -533,7 +512,7 @@ class VMwareManager:
         return f"VM '{name}' created."
 
     def clone_vm(self, template_name: str, new_name: str) -> str:
-        """Clone a VM using ovftool (ESXi-compatible; CloneVM_Task requires vCenter)."""
+        """Clone a VM using ovftool (CloneVM_Task is not supported on standalone ESXi hosts)."""
         import shutil
         import subprocess
 
@@ -545,11 +524,11 @@ class VMwareManager:
             )
 
         source_url = (
-            f"vi://{self.config.vcenter_user}:{self.config.vcenter_password}"
+            f"vi://{self.config.esxi_user}:{self.config.esxi_password}"
             f"@{self.config.esxi_host}/{template_name}"
         )
         dest_url = (
-            f"vi://{self.config.vcenter_user}:{self.config.vcenter_password}"
+            f"vi://{self.config.esxi_user}:{self.config.esxi_password}"
             f"@{self.config.esxi_host}"
         )
 
@@ -719,7 +698,7 @@ class VMwareManager:
         return f"VM '{name}' powered off."
 
     def wait_for_task(self, task: vim.Task, timeout: int = 300) -> Dict[str, Any]:
-        """Wait for a vCenter task to complete or timeout."""
+        """Wait for a task to complete or timeout."""
         import time
         start_time = time.time()
         while task.info.state not in [vim.TaskInfo.State.success, vim.TaskInfo.State.error]:
