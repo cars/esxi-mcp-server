@@ -111,5 +111,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-04
-Stopped at: Completed 04-03-PLAN.md — docker-entrypoint.sh updated to ESXI_* env vars; zero VCENTER_* references remain; DOCS-03 complete
+Stopped at: Completed 04-01-PLAN.md — README.md updated with esxi_* config keys, ESXI_* env vars, removed datacenter/cluster rows, added ovftool note (DOCS-01 complete)
 Resume file: None
