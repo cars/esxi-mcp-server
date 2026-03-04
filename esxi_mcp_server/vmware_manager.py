@@ -550,12 +550,13 @@ class VMwareManager:
         )
         dest_url = (
             f"vi://{self.config.vcenter_user}:{self.config.vcenter_password}"
-            f"@{self.config.esxi_host}/{new_name}"
+            f"@{self.config.esxi_host}"
         )
 
         cmd = [
             ovftool_path,
             "--noSSLVerify",
+            "--acceptAllEulas",
             f"--name={new_name}",
             source_url,
             dest_url,
@@ -573,8 +574,9 @@ class VMwareManager:
             raise Exception(f"ovftool clone timed out after 600s for VM '{template_name}'")
 
         if result.returncode != 0:
-            logging.error(f"ovftool stderr: {result.stderr}")
-            raise Exception(f"ovftool clone failed (exit {result.returncode}): {result.stderr.strip()}")
+            combined = (result.stdout + result.stderr).strip()
+            logging.error(f"ovftool output: {combined}")
+            raise Exception(f"ovftool clone failed (exit {result.returncode}): {combined}")
 
         logging.info(f"Cloned VM '{template_name}' to '{new_name}' via ovftool")
         return f"VM '{new_name}' cloned from '{template_name}'."
