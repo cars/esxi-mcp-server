@@ -1,10 +1,10 @@
 # ESXi MCP Server
 
-A VMware ESXi/vCenter management server based on MCP (Model Control Protocol), providing simple REST API interfaces for virtual machine management.
+A VMware ESXi management server (standalone ESXi only) based on MCP (Model Control Protocol), providing simple REST API interfaces for virtual machine management.
 
 ## Features
 
-- Support for ESXi and vCenter Server connections
+- Standalone ESXi host connection (no vCenter required)
 - Multiple MCP transport protocols:
   - **Streamable HTTP** - HTTP-based transport at `/message` endpoint (default)
   - **stdio** - Standard input/output transport for subprocess communication
@@ -60,16 +60,14 @@ pip install pyvmomi pyyaml uvicorn mcp-core
 1. Create configuration file `config.yaml`:
 
 ```yaml
-vcenter_host: "your-vcenter-ip"
-vcenter_user: "administrator@vsphere.local"
-vcenter_password: "your-password"
-datacenter: "your-datacenter"        # Optional
-cluster: "your-cluster"              # Optional
+esxi_host: "your-esxi-ip"
+esxi_user: "root"
+esxi_password: "your-password"
 datastore: "your-datastore"          # Optional
 network: "VM Network"                # Optional
 insecure: true                       # Skip SSL certificate verification
 api_key: "your-api-key"             # API access key
-log_file: "./logs/vmware_mcp.log"   # Log file path
+log_file: "./logs/esxi_mcp.log"     # Log file path
 log_level: "INFO"                    # Log level
 ```
 
@@ -223,6 +221,8 @@ X-API-Key: your-api-key
     "new_name": "new-vm-name"
 }
 ```
+
+**Note:** `clone_vm` requires `ovftool` to be installed and available in `$PATH` on the machine running the server. ovftool can be downloaded from the VMware Developer portal.
 
 3. Delete VM
 ```json
