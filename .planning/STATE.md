@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-04T01:25:00.000Z"
+last_updated: "2026-03-04T01:29:00.000Z"
 progress:
   total_phases: 4
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 11
-  completed_plans: 10
+  completed_plans: 11
 ---
 
 # Project State
@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-02)
 
 **Core value:** Every MCP tool must work against a standalone ESXi host with no vCenter required.
-**Current focus:** Phase 3 - Code and Config Rename
+**Current focus:** Phase 3 complete — all plans done
 
 ## Current Position
 
-Phase: 3 of 4 (Code and Config Rename)
-Plan: 1 of 2 in current phase (03-01 complete)
-Status: Phase 3 in progress — config.py rename complete; vmware_manager.py rename pending
-Last activity: 2026-03-04 — Phase 3 plan 01 complete; Config fields renamed to esxi_user/esxi_password, datacenter/cluster removed, env_map updated to ESXI_* keys
+Phase: 3 of 4 (Code and Config Rename) — COMPLETE
+Plan: 2 of 2 in phase (03-02 complete)
+Status: Phase 3 complete — config.py and vmware_manager.py rename both done; zero vcenter references remain
+Last activity: 2026-03-04 — Phase 3 plan 02 complete; _connect_esxi() in place, dead datacenter/cluster branches removed, all vcenter field refs updated
 
-Progress: [█████████░] 90%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -42,7 +42,7 @@ Progress: [█████████░] 90%
 |-------|-------|-------|----------|
 | 01-audit | 1 | 2min | 2min |
 | 02-tool-changes | 8 | 10min | 1.25min |
-| 03-code-and-config-rename | 1 | 1min | 1min |
+| 03-code-and-config-rename | 2 | 3min | 1.5min |
 
 **Recent Trend:**
 - Last 9 plans: 02-01 (1min), 02-02 (2min), 02-03 (2min), 02-04 (1min), 02-05 (1min), 02-06 (2min), 02-07 (1min), 02-08 (1min), 03-01 (1min)
@@ -86,6 +86,8 @@ Recent decisions affecting current work:
 - [Phase 02-tool-changes]: ovftool error handling combines result.stdout + result.stderr (ovftool writes to stdout)
 - [03-01]: Config dataclass fields renamed vcenter_user->esxi_user, vcenter_password->esxi_password; datacenter/cluster fields removed entirely; env_map updated to ESXI_* keys only
 - [03-01]: datastore and network Config field names unchanged — only their env var keys renamed (VCENTER_DATASTORE->ESXI_DATASTORE)
+- [03-02]: _connect_vcenter() renamed to _connect_esxi(); SmartConnect uses esxi_user/esxi_password; datacenter/cluster if/else branches removed (dead code since 03-01 removed those Config fields)
+- [03-02]: clone_vm vi:// URLs updated to use esxi_user/esxi_password; wait_for_task docstring de-vCenter'd; zero vcenter|vCenter|VCENTER refs remain in package
 
 ### Pending Todos
 
@@ -98,5 +100,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-04
-Stopped at: Completed 03-code-and-config-rename-03-01-PLAN.md — Config fields renamed to esxi_user/esxi_password, datacenter/cluster removed, env_map updated to ESXI_* keys (CONF-01, CONF-02, CONF-03, CODE-02)
+Stopped at: Completed 03-02-PLAN.md — _connect_esxi() in place, dead datacenter/cluster branches removed, all vcenter field refs updated, zero vcenter references remain (CODE-01, CONF-04, CODE-03, CODE-04)
 Resume file: None

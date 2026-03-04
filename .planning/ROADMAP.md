@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Audit** - Classify all 31 MCP tools and document ESXi vs vCenter API differences
 - [x] **Phase 2: Tool Changes** - Remove vCenter-only tools and rewrite tools that use vCenter-specific API objects (gap closure in progress)
-- [ ] **Phase 3: Code and Config Rename** - Rename config keys, method names, and internal references from vCenter to ESXi
+- [x] **Phase 3: Code and Config Rename** - Rename config keys, method names, and internal references from vCenter to ESXi (completed 2026-03-04)
 - [ ] **Phase 4: Documentation** - Update all user-facing documentation to reflect the standalone ESXi pivot
 
 ## Phase Details
@@ -89,5 +89,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Audit | 1/1 | Complete | 2026-03-02 |
 | 2. Tool Changes | 8/8 | Complete | 2026-03-04 |
-| 3. Code and Config Rename | 1/2 | In progress | - |
+| 3. Code and Config Rename | 2/2 | Complete   | 2026-03-04 |
 | 4. Documentation | 0/TBD | Not started | - |
