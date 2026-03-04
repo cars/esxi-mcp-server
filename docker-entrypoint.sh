@@ -27,7 +27,7 @@ wait_for_config() {
 
 # Function to validate required environment variables
 validate_env() {
-    local required_vars=("VCENTER_HOST" "VCENTER_USER" "VCENTER_PASSWORD")
+    local required_vars=("ESXI_HOST" "ESXI_USER" "ESXI_PASSWORD")
     local missing_vars=()
     
     for var in "${required_vars[@]}"; do
@@ -50,17 +50,15 @@ create_config_from_env() {
     echo "Creating configuration from environment variables..."
     
     cat > "$config_file" << EOF
-vcenter_host: "${VCENTER_HOST}"
-vcenter_user: "${VCENTER_USER}"
-vcenter_password: "${VCENTER_PASSWORD}"
+esxi_host: "${ESXI_HOST}"
+esxi_user: "${ESXI_USER}"
+esxi_password: "${ESXI_PASSWORD}"
 EOF
 
     # Add optional configuration
-    [ -n "$VCENTER_DATACENTER" ] && echo "datacenter: \"${VCENTER_DATACENTER}\"" >> "$config_file"
-    [ -n "$VCENTER_CLUSTER" ] && echo "cluster: \"${VCENTER_CLUSTER}\"" >> "$config_file"
-    [ -n "$VCENTER_DATASTORE" ] && echo "datastore: \"${VCENTER_DATASTORE}\"" >> "$config_file"
-    [ -n "$VCENTER_NETWORK" ] && echo "network: \"${VCENTER_NETWORK}\"" >> "$config_file"
-    [ -n "$VCENTER_INSECURE" ] && echo "insecure: ${VCENTER_INSECURE}" >> "$config_file"
+    [ -n "$ESXI_DATASTORE" ] && echo "datastore: \"${ESXI_DATASTORE}\"" >> "$config_file"
+    [ -n "$ESXI_NETWORK" ] && echo "network: \"${ESXI_NETWORK}\"" >> "$config_file"
+    [ -n "$ESXI_INSECURE" ] && echo "insecure: ${ESXI_INSECURE}" >> "$config_file"
     [ -n "$MCP_API_KEY" ] && echo "api_key: \"${MCP_API_KEY}\"" >> "$config_file"
     [ -n "$MCP_LOG_LEVEL" ] && echo "log_level: \"${MCP_LOG_LEVEL}\"" >> "$config_file"
     
@@ -84,8 +82,8 @@ fi
 
 # Print configuration info (without sensitive data)
 echo "Server starting with configuration:"
-echo "  Host: ${VCENTER_HOST:-'from config file'}"
-echo "  User: ${VCENTER_USER:-'from config file'}"
+echo "  Host: ${ESXI_HOST:-'from config file'}"
+echo "  User: ${ESXI_USER:-'from config file'}"
 echo "  Log Level: ${MCP_LOG_LEVEL:-INFO}"
 echo "  Port: 8080"
 
