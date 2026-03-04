@@ -38,10 +38,10 @@
 
 ### Documentation
 
-- [ ] **DOCS-01**: `README.md` updated: project description, config key names, tool list, connection instructions for standalone ESXi
-- [ ] **DOCS-02**: `config.yaml.sample` updated with new `ESXI_*` variable names and ESXi-specific comments
-- [ ] **DOCS-03**: `docker-entrypoint.sh` updated to use new `ESXI_*` environment variable names
-- [ ] **DOCS-04**: `CLAUDE.md` updated to reflect new tool count, removed tools, and renamed config keys
+- [x] **DOCS-01**: `README.md` updated: project description, config key names, tool list, connection instructions for standalone ESXi
+- [x] **DOCS-02**: `config.yaml.sample` updated with new `ESXI_*` variable names and ESXi-specific comments
+- [x] **DOCS-03**: `docker-entrypoint.sh` updated to use new `ESXI_*` environment variable names
+- [x] **DOCS-04**: `CLAUDE.md` updated to reflect new tool count, removed tools, and renamed config keys
 
 ## v2 Requirements
 
@@ -88,10 +88,10 @@
 | CODE-02 | Phase 3 | Complete |
 | CODE-03 | Phase 3 | Complete |
 | CODE-04 | Phase 3 | Complete |
-| DOCS-01 | Phase 4 | Pending |
-| DOCS-02 | Phase 4 | Pending |
-| DOCS-03 | Phase 4 | Pending |
-| DOCS-04 | Phase 4 | Pending |
+| DOCS-01 | Phase 4 | Complete |
+| DOCS-02 | Phase 4 | Complete |
+| DOCS-03 | Phase 4 | Complete |
+| DOCS-04 | Phase 4 | Complete |
 
 **Coverage:**
 - v1 requirements: 20 total

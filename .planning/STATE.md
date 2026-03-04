@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-04T01:34:46.393Z"
+last_updated: "2026-03-04T05:34:39.664Z"
 progress:
-  total_phases: 3
-  completed_phases: 3
-  total_plans: 11
-  completed_plans: 11
+  total_phases: 4
+  completed_phases: 4
+  total_plans: 15
+  completed_plans: 15
 ---
 
 # Project State
@@ -18,14 +18,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-02)
 
 **Core value:** Every MCP tool must work against a standalone ESXi host with no vCenter required.
-**Current focus:** Phase 3 complete — all plans done
+**Current focus:** Phase 4 complete — all plans done; entire project rename complete
 
 ## Current Position
 
-Phase: 3 of 4 (Code and Config Rename) — COMPLETE
-Plan: 2 of 2 in phase (03-02 complete)
-Status: Phase 3 complete — config.py and vmware_manager.py rename both done; zero vcenter references remain
-Last activity: 2026-03-04 — Phase 3 plan 02 complete; _connect_esxi() in place, dead datacenter/cluster branches removed, all vcenter field refs updated
+Phase: 4 of 4 (Documentation) — COMPLETE
+Plan: 3 of 4 in phase (04-03 complete)
+Status: All phases complete — docker-entrypoint.sh updated to ESXI_* env vars; zero VCENTER_* references remain
+Last activity: 2026-03-04 — Phase 4 plan 03 complete; docker-entrypoint.sh validate_env/heredoc/optionals/echo lines all use ESXI_* naming
 
 Progress: [██████████] 100%
 
@@ -49,6 +49,10 @@ Progress: [██████████] 100%
 - Trend: -
 
 *Updated after each plan completion*
+| Phase 04-documentation P02 | 1 | 1 tasks | 1 files |
+| Phase 04-documentation P04-04 | 1 | 1 tasks | 1 files |
+| Phase 04-documentation P03 | 2min | 1 tasks | 1 files |
+| Phase 04-documentation P04-01 | 1 | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -88,6 +92,13 @@ Recent decisions affecting current work:
 - [03-01]: datastore and network Config field names unchanged — only their env var keys renamed (VCENTER_DATASTORE->ESXI_DATASTORE)
 - [03-02]: _connect_vcenter() renamed to _connect_esxi(); SmartConnect uses esxi_user/esxi_password; datacenter/cluster if/else branches removed (dead code since 03-01 removed those Config fields)
 - [03-02]: clone_vm vi:// URLs updated to use esxi_user/esxi_password; wait_for_task docstring de-vCenter'd; zero vcenter|vCenter|VCENTER refs remain in package
+- [Phase 04-documentation]: config.yaml.sample YAML keys must match Config dataclass field names exactly — not env var names (ALL_CAPS) and not removed fields (datacenter, cluster)
+- [Phase 04-documentation]: CLAUDE.md must be updated whenever env var names, tool counts, or connection targets change
+- [Phase 04-03]: docker-entrypoint.sh VCENTER_DATACENTER and VCENTER_CLUSTER conditionals removed entirely; Config dataclass no longer has those fields since 03-01
+- [Phase 04-03]: docker-entrypoint.sh now validates ESXI_HOST/ESXI_USER/ESXI_PASSWORD and generates config.yaml with esxi_host/esxi_user/esxi_password YAML keys; zero VCENTER_* references remain in docker-entrypoint.sh
+- [Phase 04-documentation]: README.md YAML config block uses esxi_host/esxi_user/esxi_password — no vcenter_* keys
+- [Phase 04-documentation]: Environment variables list uses ESXI_* names matching config.py env_map exactly
+- [Phase 04-documentation]: ovftool dependency note added near clone_vm section (subprocess-based clone requires host-side install)
 
 ### Pending Todos
 
@@ -100,5 +111,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-04
-Stopped at: Completed 03-02-PLAN.md — _connect_esxi() in place, dead datacenter/cluster branches removed, all vcenter field refs updated, zero vcenter references remain (CODE-01, CONF-04, CODE-03, CODE-04)
+Stopped at: Completed 04-03-PLAN.md — docker-entrypoint.sh updated to ESXI_* env vars; zero VCENTER_* references remain; DOCS-03 complete
 Resume file: None
