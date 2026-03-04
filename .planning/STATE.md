@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: unknown
-last_updated: "2026-03-04T05:34:39.664Z"
+status: complete
+last_updated: "2026-03-04T05:35:00.000Z"
 progress:
   total_phases: 4
   completed_phases: 4
@@ -18,14 +18,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-02)
 
 **Core value:** Every MCP tool must work against a standalone ESXi host with no vCenter required.
-**Current focus:** Phase 4 complete — all plans done; entire project rename complete
+**Current focus:** Phase 4 complete — entire ESXi migration complete across all 4 phases
 
 ## Current Position
 
 Phase: 4 of 4 (Documentation) — COMPLETE
-Plan: 3 of 4 in phase (04-03 complete)
-Status: All phases complete — docker-entrypoint.sh updated to ESXI_* env vars; zero VCENTER_* references remain
-Last activity: 2026-03-04 — Phase 4 plan 03 complete; docker-entrypoint.sh validate_env/heredoc/optionals/echo lines all use ESXI_* naming
+Plan: 4 of 4 in phase (04-04 complete)
+Status: All phases complete — CLAUDE.md updated with accurate ESXi-only context; zero outdated vCenter references remain anywhere in the codebase or documentation
+Last activity: 2026-03-04 — Phase 4 plan 04 complete; CLAUDE.md updated: 30 tools, ESXi hosts, ESXI_* env vars, connects to ESXi
 
 Progress: [██████████] 100%
 
@@ -96,9 +96,10 @@ Recent decisions affecting current work:
 - [Phase 04-documentation]: CLAUDE.md must be updated whenever env var names, tool counts, or connection targets change
 - [Phase 04-03]: docker-entrypoint.sh VCENTER_DATACENTER and VCENTER_CLUSTER conditionals removed entirely; Config dataclass no longer has those fields since 03-01
 - [Phase 04-03]: docker-entrypoint.sh now validates ESXI_HOST/ESXI_USER/ESXI_PASSWORD and generates config.yaml with esxi_host/esxi_user/esxi_password YAML keys; zero VCENTER_* references remain in docker-entrypoint.sh
-- [Phase 04-documentation]: README.md YAML config block uses esxi_host/esxi_user/esxi_password — no vcenter_* keys
+- [Phase 04-documentation]: README.md YAML config block uses esxi_host/esxi_user/esxi_password -- no vcenter_* keys
 - [Phase 04-documentation]: Environment variables list uses ESXI_* names matching config.py env_map exactly
 - [Phase 04-documentation]: ovftool dependency note added near clone_vm section (subprocess-based clone requires host-side install)
+- [04-04]: CLAUDE.md updated: 30 tools (not 31), ESXi hosts (not ESXi/vCenter), ESXI_* env vars (not VCENTER_*), connects to ESXi (not vCenter); list_datastore_clusters removal documented
 
 ### Pending Todos
 
@@ -111,5 +112,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-04
-Stopped at: Completed 04-01-PLAN.md — README.md updated with esxi_* config keys, ESXI_* env vars, removed datacenter/cluster rows, added ovftool note (DOCS-01 complete)
+Stopped at: Completed 04-04-PLAN.md -- CLAUDE.md updated with accurate ESXi-only context: 30 tools, ESXi hosts, ESXI_* env vars, connects to ESXi; all 4 phases complete (DOCS-04)
 Resume file: None
