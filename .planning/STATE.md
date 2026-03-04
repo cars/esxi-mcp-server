@@ -1,9 +1,9 @@
 ---
 gsd_state_version: 1.0
 milestone: v1.0
-milestone_name: milestone
-status: unknown
-last_updated: "2026-03-04T05:38:59.637Z"
+milestone_name: ESXi Pivot
+status: complete
+last_updated: "2026-03-04T13:51:51.406Z"
 progress:
   total_phases: 4
   completed_phases: 4
@@ -15,10 +15,10 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-02)
+See: .planning/PROJECT.md (updated 2026-03-04)
 
-**Core value:** Every MCP tool must work against a standalone ESXi host with no vCenter required.
-**Current focus:** Phase 4 complete — entire ESXi migration complete across all 4 phases
+**Core value:** Every MCP tool works against a standalone ESXi host with no vCenter required.
+**Current focus:** v1.0 milestone shipped — planning next milestone with `/gsd:new-milestone`
 
 ## Current Position
 
