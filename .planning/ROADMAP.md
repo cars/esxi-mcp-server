@@ -63,7 +63,11 @@ Plans:
   2. `VCENTER_DATACENTER` and `VCENTER_CLUSTER` environment variables are not read or referenced anywhere in the codebase
   3. `_connect_vcenter()` method does not exist; `_connect_esxi()` is used at all call sites
   4. No `vcenter` string appears in config field names, log output, or in-code docstrings (excluding git history and out-of-scope files)
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 03-01-PLAN.md — Rename Config dataclass fields and env_map: ESXI_* keys, esxi_user/esxi_password fields, remove datacenter/cluster
+- [ ] 03-02-PLAN.md — Rename _connect_vcenter to _connect_esxi, remove datacenter/cluster branches, update field refs and comments
 
 ### Phase 4: Documentation
 **Goal**: Every piece of user-facing documentation accurately describes the ESXi-only server with correct config key names, tool list, and connection instructions
@@ -85,5 +89,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Audit | 1/1 | Complete | 2026-03-02 |
 | 2. Tool Changes | 8/8 | Complete | 2026-03-04 |
-| 3. Code and Config Rename | 0/TBD | Not started | - |
+| 3. Code and Config Rename | 0/2 | Not started | - |
 | 4. Documentation | 0/TBD | Not started | - |
