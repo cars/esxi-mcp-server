@@ -465,6 +465,7 @@ class VMwareManager:
 
         # Build VM configuration specification
         vm_spec = vim.vm.ConfigSpec(name=name, memoryMB=memory_mb, numCPUs=cpus, guestId="otherGuest")  # guestId can be adjusted as needed
+        vm_spec.files = vim.vm.FileInfo(vmPathName=f"[{datastore_obj.name}]")
         device_specs = []
 
         # Add SCSI controller
@@ -603,9 +604,10 @@ class VMwareManager:
 
         # Build VM configuration specification
         vm_spec = vim.vm.ConfigSpec(name=name, memoryMB=memory_mb, numCPUs=cpus, guestId=guest_id)
+        vm_spec.files = vim.vm.FileInfo(vmPathName=f"[{datastore_obj.name}]")
         if annotation:
             vm_spec.annotation = annotation
-        
+
         device_specs = []
 
         # Add SCSI controller
