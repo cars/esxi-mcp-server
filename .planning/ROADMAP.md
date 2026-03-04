@@ -66,7 +66,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 03-01-PLAN.md — Rename Config dataclass fields and env_map: ESXI_* keys, esxi_user/esxi_password fields, remove datacenter/cluster
+- [x] 03-01-PLAN.md — Rename Config dataclass fields and env_map: ESXI_* keys, esxi_user/esxi_password fields, remove datacenter/cluster
 - [ ] 03-02-PLAN.md — Rename _connect_vcenter to _connect_esxi, remove datacenter/cluster branches, update field refs and comments
 
 ### Phase 4: Documentation
@@ -89,5 +89,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Audit | 1/1 | Complete | 2026-03-02 |
 | 2. Tool Changes | 8/8 | Complete | 2026-03-04 |
-| 3. Code and Config Rename | 0/2 | Not started | - |
+| 3. Code and Config Rename | 1/2 | In progress | - |
 | 4. Documentation | 0/TBD | Not started | - |

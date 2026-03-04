@@ -24,15 +24,15 @@
 
 ### Configuration
 
-- [ ] **CONF-01**: Config keys renamed: `VCENTER_HOST` → `ESXI_HOST`, `VCENTER_USER` → `ESXI_USER`, `VCENTER_PASSWORD` → `ESXI_PASSWORD`, `VCENTER_INSECURE` → `ESXI_INSECURE`
-- [ ] **CONF-02**: `VCENTER_DATACENTER` and `VCENTER_CLUSTER` config keys removed; corresponding `Config` dataclass fields removed
-- [ ] **CONF-03**: `VCENTER_DATASTORE` → `ESXI_DATASTORE`, `VCENTER_NETWORK` → `ESXI_NETWORK` config keys renamed
+- [x] **CONF-01**: Config keys renamed: `VCENTER_HOST` → `ESXI_HOST`, `VCENTER_USER` → `ESXI_USER`, `VCENTER_PASSWORD` → `ESXI_PASSWORD`, `VCENTER_INSECURE` → `ESXI_INSECURE`
+- [x] **CONF-02**: `VCENTER_DATACENTER` and `VCENTER_CLUSTER` config keys removed; corresponding `Config` dataclass fields removed
+- [x] **CONF-03**: `VCENTER_DATASTORE` → `ESXI_DATASTORE`, `VCENTER_NETWORK` → `ESXI_NETWORK` config keys renamed
 - [ ] **CONF-04**: Startup connection logic simplified: datacenter and cluster resolution code removed from `VMwareManager` initialization
 
 ### Code Renaming
 
 - [ ] **CODE-01**: `_connect_vcenter()` method renamed to `_connect_esxi()` in `vmware_manager.py`; all call sites updated
-- [ ] **CODE-02**: `config.py` dataclass field names updated to match new env var names (`vcenter_host` → `esxi_host`, etc.)
+- [x] **CODE-02**: `config.py` dataclass field names updated to match new env var names (`vcenter_host` → `esxi_host`, etc.)
 - [ ] **CODE-03**: Internal comments, docstrings, and log messages updated to reference ESXi instead of vCenter
 - [ ] **CODE-04**: `mcp_server.py` and `tools.py` updated to remove references to removed tools and vCenter-specific concepts
 
@@ -80,12 +80,12 @@
 | RWRT-03 | Phase 2 | Complete |
 | RWRT-04 | Phase 2 | Complete |
 | RWRT-05 | Phase 2 | Complete |
-| CONF-01 | Phase 3 | Pending |
-| CONF-02 | Phase 3 | Pending |
-| CONF-03 | Phase 3 | Pending |
+| CONF-01 | Phase 3 | Complete |
+| CONF-02 | Phase 3 | Complete |
+| CONF-03 | Phase 3 | Complete |
 | CONF-04 | Phase 3 | Pending |
 | CODE-01 | Phase 3 | Pending |
-| CODE-02 | Phase 3 | Pending |
+| CODE-02 | Phase 3 | Complete |
 | CODE-03 | Phase 3 | Pending |
 | CODE-04 | Phase 3 | Pending |
 | DOCS-01 | Phase 4 | Pending |
@@ -100,4 +100,4 @@
 
 ---
 *Requirements defined: 2026-03-02*
-*Last updated: 2026-03-03 after Phase 2 plan 02 completion*
+*Last updated: 2026-03-04 after Phase 3 plan 01 completion (CONF-01, CONF-02, CONF-03, CODE-02)*
