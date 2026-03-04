@@ -249,11 +249,9 @@ GET vmstats://{vm_name}
 
 | Parameter | Description | Required | Default |
 |-----------|-------------|----------|---------|
-| vcenter_host | vCenter/ESXi server address | Yes | - |
-| vcenter_user | Login username | Yes | - |
-| vcenter_password | Login password | Yes | - |
-| datacenter | Datacenter name | No | Auto-select first |
-| cluster | Cluster name | No | Auto-select first |
+| esxi_host | ESXi host IP address or hostname | Yes | - |
+| esxi_user | Login username | Yes | - |
+| esxi_password | Login password | Yes | - |
 | datastore | Storage name | No | Auto-select largest available |
 | network | Network name | No | VM Network |
 | insecure | Skip SSL verification | No | false |
@@ -296,14 +294,12 @@ esxi-mcp-server/
 ## Environment Variables
 
 All configuration items support environment variable settings, following these naming rules:
-- VCENTER_HOST
-- VCENTER_USER
-- VCENTER_PASSWORD
-- VCENTER_DATACENTER
-- VCENTER_CLUSTER
-- VCENTER_DATASTORE
-- VCENTER_NETWORK
-- VCENTER_INSECURE
+- ESXI_HOST
+- ESXI_USER
+- ESXI_PASSWORD
+- ESXI_DATASTORE
+- ESXI_NETWORK
+- ESXI_INSECURE
 - MCP_API_KEY
 - MCP_LOG_FILE
 - MCP_LOG_LEVEL
