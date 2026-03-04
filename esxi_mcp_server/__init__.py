@@ -1,4 +1,4 @@
-"""ESXi MCP Server - A VMware ESXi/vCenter management server based on MCP."""
+"""ESXi MCP Server - A VMware ESXi management server based on MCP."""
 
 __version__ = "0.0.1"
 
