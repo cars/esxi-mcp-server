@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-03T22:46:40.521Z"
+last_updated: "2026-03-04T00:29:52.337Z"
 progress:
   total_phases: 2
   completed_phases: 2
-  total_plans: 8
-  completed_plans: 8
+  total_plans: 9
+  completed_plans: 9
 ---
 
 # Project State
@@ -23,11 +23,11 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 ## Current Position
 
 Phase: 2 of 4 (Tool Changes)
-Plan: 7 of 7 in current phase (02-07 complete)
-Status: Phase 2 complete (all gap closure plans done)
-Last activity: 2026-03-03 — Phase 2 plan 07 complete; clone_vm rewritten to use ovftool subprocess (RWRT-02 gap closed)
+Plan: 8 of 8 in current phase (02-08 complete)
+Status: Phase 2 complete (all gap closure plans done, including UAT bug fixes)
+Last activity: 2026-03-04 — Phase 2 plan 08 complete; UAT bugs fixed: vim.vm.FileInfo on ConfigSpec, clone_vm ovftool dest_url/--acceptAllEulas/error output
 
-Progress: [███████░░░] 70%
+Progress: [████████░░] 80%
 
 ## Performance Metrics
 
@@ -41,10 +41,10 @@ Progress: [███████░░░] 70%
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-audit | 1 | 2min | 2min |
-| 02-tool-changes | 6 | 9min | 1.5min |
+| 02-tool-changes | 8 | 10min | 1.25min |
 
 **Recent Trend:**
-- Last 6 plans: 02-01 (1min), 02-02 (2min), 02-03 (2min), 02-04 (1min), 02-05 (1min), 02-06 (2min)
+- Last 8 plans: 02-01 (1min), 02-02 (2min), 02-03 (2min), 02-04 (1min), 02-05 (1min), 02-06 (2min), 02-07 (1min), 02-08 (1min)
 - Trend: -
 
 *Updated after each plan completion*
@@ -79,6 +79,10 @@ Recent decisions affecting current work:
 - [Phase 02-tool-changes]: VM placement folder: always self.datacenter_obj.vmFolder (vim.Folder), never host_system.vm (VirtualMachine[] list)
 - [Phase 02-tool-changes]: clone_vm rewritten to use ovftool vi:// subprocess; CloneVM_Task removed (vCenter-only API)
 - [Phase 02-tool-changes]: ovftool PATH check via shutil.which; raises RuntimeError with install instructions if absent
+- [Phase 02-tool-changes]: vim.vm.FileInfo vmPathName uses bracketed datastore name format: '[datastore-name]' — required by ESXi CreateVM_Task
+- [Phase 02-tool-changes]: clone_vm dest_url must have NO trailing path — ESXi interprets path as datacenter name
+- [Phase 02-tool-changes]: ovftool --acceptAllEulas required to prevent interactive prompt hang
+- [Phase 02-tool-changes]: ovftool error handling combines result.stdout + result.stderr (ovftool writes to stdout)
 
 ### Pending Todos
 
@@ -90,6 +94,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-03
-Stopped at: Completed 02-tool-changes-02-07-PLAN.md — clone_vm rewritten to use ovftool subprocess (RWRT-02 gap closed); Phase 2 all plans complete
+Last session: 2026-03-04
+Stopped at: Completed 02-tool-changes-02-08-PLAN.md — UAT gap closure: FileInfo on ConfigSpec for create_vm/create_vm_custom, clone_vm ovftool dest_url/--acceptAllEulas/stderr fixes (RWRT-01, RWRT-02)
 Resume file: None
