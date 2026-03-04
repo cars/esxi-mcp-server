@@ -10,10 +10,8 @@ from typing import Optional
 class Config:
     """Configuration data class for storing configuration options."""
     esxi_host: str
-    vcenter_user: str
-    vcenter_password: str
-    datacenter: Optional[str] = None   # Datacenter name (optional)
-    cluster: Optional[str] = None      # Cluster name (optional)
+    esxi_user: str
+    esxi_password: str
     datastore: Optional[str] = None    # Datastore name (optional)
     network: Optional[str] = None      # Virtual network name (optional)
     insecure: bool = False             # Whether to skip SSL certificate verification (default: False)
@@ -52,14 +50,12 @@ def load_config(config_path: Optional[str] = None) -> Config:
     
     # Override configuration from environment variables (higher priority than file)
     env_map = {
-        "VCENTER_HOST": "esxi_host",
-        "VCENTER_USER": "vcenter_user",
-        "VCENTER_PASSWORD": "vcenter_password",
-        "VCENTER_DATACENTER": "datacenter",
-        "VCENTER_CLUSTER": "cluster",
-        "VCENTER_DATASTORE": "datastore",
-        "VCENTER_NETWORK": "network",
-        "VCENTER_INSECURE": "insecure",
+        "ESXI_HOST": "esxi_host",
+        "ESXI_USER": "esxi_user",
+        "ESXI_PASSWORD": "esxi_password",
+        "ESXI_DATASTORE": "datastore",
+        "ESXI_NETWORK": "network",
+        "ESXI_INSECURE": "insecure",
         "MCP_API_KEY": "api_key",
         "MCP_LOG_FILE": "log_file",
         "MCP_LOG_LEVEL": "log_level"
@@ -75,7 +71,7 @@ def load_config(config_path: Optional[str] = None) -> Config:
                 config_data[cfg_key] = val
     
     # Validate required keys
-    required_keys = ["esxi_host", "vcenter_user", "vcenter_password"]
+    required_keys = ["esxi_host", "esxi_user", "esxi_password"]
     for k in required_keys:
         if k not in config_data or not config_data[k]:
             raise Exception(f"Missing required configuration item: {k}")
