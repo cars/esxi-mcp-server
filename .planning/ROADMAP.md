@@ -78,7 +78,13 @@ Plans:
   2. `config.yaml.sample` shows only `ESXI_*` variable names with ESXi-appropriate comments; no `VCENTER_*` keys present
   3. `docker-entrypoint.sh` generates config using `ESXI_*` environment variable names; a container started with `ESXI_HOST` set connects successfully
   4. `CLAUDE.md` reflects the updated tool count, removed tools, and renamed config keys so future Claude sessions start with accurate context
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+- [ ] 04-01-PLAN.md — Update README.md: ESXi-only description, esxi_* config YAML, ESXI_* env vars table, ovftool note for clone_vm
+- [ ] 04-02-PLAN.md — Replace config.yaml.sample: esxi_host/esxi_user/esxi_password YAML keys, remove datacenter/cluster fields
+- [ ] 04-03-PLAN.md — Update docker-entrypoint.sh: ESXI_* env var names throughout, remove datacenter/cluster conditionals
+- [ ] 04-04-PLAN.md — Update CLAUDE.md: 30 tools (not 31), ESXi-only description, ESXI_* config keys, connects to ESXi
 
 ## Progress
 
@@ -90,4 +96,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. Audit | 1/1 | Complete | 2026-03-02 |
 | 2. Tool Changes | 8/8 | Complete | 2026-03-04 |
 | 3. Code and Config Rename | 2/2 | Complete   | 2026-03-04 |
-| 4. Documentation | 0/TBD | Not started | - |
+| 4. Documentation | 0/4 | Not started | - |
